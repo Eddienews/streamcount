@@ -116,11 +116,13 @@ def build_report(run_dir: Path, chart_path: Path | None = None) -> dict:
     run_dir = Path(run_dir)
     summary_file = run_dir / "summary.json"
     summary = json.loads(summary_file.read_text(encoding="utf-8")) if summary_file.exists() else {}
+    events_file = _find_events_file(run_dir)
     events = load_events(run_dir)
     duration = summary.get("duration_s")
     per_minute = passes_per_minute(events, duration)
     report = {
         "run_dir": str(run_dir),
+        "events_file": str(events_file) if events_file else None,
         "passes": summary.get("passes", len(events)),
         "duration_s": duration,
         "duration_min": round(duration / 60, 1) if duration else None,

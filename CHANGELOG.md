@@ -27,8 +27,10 @@ First public version.
 - Demo GIF (`assets/demo.gif`) generated from a real live flow run; animated one-hour chart
   (`assets/hour-live-run.gif`, `scripts/render_hour_gif.py`).
 - Outputs: `frames.csv`, `events.csv`, annotated frames, `summary.json` (+ `chart.png` in flow runs).
-- Offline test suite (33 tests) covering the tracker, reporting, detector decode, parsing,
-  URL helpers and box merging.
+- Offline test suite (35 tests) covering the tracker, reporting, detector decode, parsing,
+  URL helpers and box merging — plus **3 end-to-end tests** with real ffmpeg + ONNX inference
+  on a synthetic video (CI job `e2e`).
+- README "Known limitations" table: scope, coverage and open risks stated up front.
 - Dockerfile + docker-compose, GitHub Actions CI + tag-driven release workflow.
 - PEP 639 license metadata; `sdist`/`wheel` build clean (`twine check` passes).
 

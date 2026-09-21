@@ -192,6 +192,24 @@ batch endpoints (~50 % cheaper). Full table and provider comparison (qwen, gemma
   by their authors. For commercial use, either comply with AGPL or point `--model` at weights
   you are licensed to use. See `LICENSE` and `NOTICE.md`.
 
+## Known limitations (verified scope — read before trusting a number)
+
+This project publishes both what it does and what it has *not* been tested against.
+
+| area | status |
+|---|---|
+| **Detector recall** | 46–70 % depending on scene density (night street). Counts are a **range** (floor → recall-corrected), never a census. Dense crowds: ±10–20 %. |
+| **RTSP** | same ffmpeg pipe as HLS, but **not exercised on a real RTSP camera yet**. |
+| **Vehicle flow** | per-frame vehicle counting is validated (4/4 boxed on a traffic video); *flow counting of vehicles* (ids across time) is validated for people only. |
+| **VLM coverage** | validated with `gemini-2.5-flash-lite` only; `gemma-3-12b` untested; `qwen3.7-flash` failed our strict-JSON reply and needs prompt tuning. |
+| **Run length** | longest validated run: **1 hour** (1,800 frames). Memory/stability beyond that is unverified. |
+| **Platforms** | integration (ffmpeg/yt-dlp pipes) exercised on **Windows**; CI runs the offline unit suite plus an ffmpeg end-to-end smoke test on Linux. macOS untested. |
+| **Scenes** | two scenes measured (night pedestrian street; daytime traffic). Rain, snow, extreme crowds untested. |
+| **Docker** | Dockerfile + compose are provided; validate the image on your host before relying on it. |
+| **YouTube** | extraction depends on yt-dlp and occasionally on a JS runtime or cookies; expect periodic breakage as YouTube changes. |
+| **Re-identification** | a person leaving and returning after > 15 s is counted a second time (technically two visits). |
+| **Model licenses** | bundled *downloads* are AGPL-3.0 Ultralytics weights — commercial users should swap in their own model (see NOTICE.md). |
+
 ## Roadmap
 
 - [x] COCO detection model variant + validated vehicle counting (`--target cars`)
@@ -202,8 +220,9 @@ batch endpoints (~50 % cheaper). Full table and provider comparison (qwen, gemma
 
 ## Contributing
 
-Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The tracker has an offline
-test suite (`pytest`, 33 tests) so you can hack on it without a camera or a key.
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The test suite is split into
+35 offline tests and 3 end-to-end tests (`pytest -m e2e`, needs ffmpeg) so you can hack on it
+without a camera or a key.
 
 ## License
 

@@ -10,12 +10,14 @@ git clone https://github.com/Eddienews/streamcount
 cd streamcount
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest                                            # 33 tests, all offline
+pytest -m "not e2e"                               # 35 tests, all offline
+pytest -m e2e                                     # 3 tests using ffmpeg + the real ONNX model
 ruff check .
 ```
 
-You do **not** need a camera, a stream or an API key to develop: the test suite is fully
-offline (tracker, parsing, URL helpers, box merging).
+You do **not** need a camera, a stream or an API key to develop: the test suite is split into
+35 offline tests (tracker, reporting, decode, parsing, URL helpers, box merging) and 3
+end-to-end tests marked `e2e` that need ffmpeg and run the real pipeline on a synthetic video.
 
 ## What makes a good PR here
 

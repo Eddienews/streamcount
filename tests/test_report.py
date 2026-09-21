@@ -67,9 +67,26 @@ def test_build_report_and_chart(tmp_path):
     assert report["passes_per_minute"] == [1, 2, 1, 0]
     assert report["peak_per_minute"] == 2
     assert report["recall"] == 0.46
+    assert report["events_file"] is not None
     assert chart.exists() and chart.stat().st_size > 1000
     with Image.open(chart) as image:
         assert image.size[0] >= 400
+
+
+def test_empty_events_file_is_a_valid_report(tmp_path):
+    """A run that counted nobody is a valid result, not an error."""
+    (tmp_path / "events.csv").write_text(
+        "ts_iso,t_rel_s,event,id,hits,disp_px,total\n", encoding="utf-8"
+    )
+    report = build_report(tmp_path)
+    assert report["events_file"] is not None
+    assert report["passes"] == 0
+    assert report["passes_per_minute"] == []
+
+
+def test_report_without_events_file(tmp_path):
+    report = build_report(tmp_path)
+    assert report["events_file"] is None and report["passes"] == 0
 
 
 def test_draw_chart_without_events(tmp_path):

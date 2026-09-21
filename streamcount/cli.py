@@ -121,8 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         from .report import build_report
 
         report = build_report(args.run_dir, chart_path=args.chart)
-        if not report["passes"] and not report["passes_per_minute"]:
-            print(f"no pass events found in {args.run_dir} (is it a --flow run?)")
+        if not report.get("events_file"):
+            print(f"no events file found in {args.run_dir} (is it a --flow run?)")
             return 2
         duration = f" in {report['duration_min']} min" if report["duration_min"] else ""
         print(f"passers-by: {report['passes']}{duration}")
