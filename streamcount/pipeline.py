@@ -341,6 +341,15 @@ def run(config: RunConfig) -> RunResult:
         else:
             _log(f"{name:<5} no valid counts")
 
+    if tracker is not None and events_path:
+        from .report import draw_chart, load_events, passes_per_minute
+
+        per_minute = passes_per_minute(load_events(run_dir), duration_s=t_rel)
+        chart = draw_chart(per_minute, run_dir / "chart.png")
+        summary["chart"] = str(chart)
+        summary["passes_per_minute"] = per_minute
+        _log(f"chart: {chart}")
+
     summary_path = run_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     _log(f"CSV: {csv_path}")

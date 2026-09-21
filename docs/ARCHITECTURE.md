@@ -13,7 +13,8 @@ source ──► sampling ──► engine ──► tracker ──► outputs
 | `streamcount/vlm.py` | vision-LLM counting through any OpenAI-compatible endpoint; tolerant JSON parsing; key resolution (flag → env → `.env`) |
 | `streamcount/tracking.py` | `FlowTracker`: association, confirmation, displacement gate, ghost re-identification |
 | `streamcount/pipeline.py` | orchestration, CSVs, annotation, recall correction, `summary.json` |
-| `streamcount/cli.py` | `run`, `find-stream`, `download-model` |
+| `streamcount/report.py` | post-run analysis: per-minute buckets, peak, chart PNG (Pillow only) |
+| `streamcount/cli.py` | `run`, `find-stream`, `download-model`, `report` |
 
 Nothing is hidden behind a service: the whole pipeline is these six modules plus `ffmpeg`
 (and optionally `yt-dlp`).
