@@ -32,3 +32,5 @@ First public version.
 - VLM (gemini-2.5-flash-lite): 12/13/12 on repeated runs of the same frame; ~$0.0002/frame.
 - Flow: 55 passes in 2.5 min (live), 28 passes in 80 s (fixed replay) with detector recall
   ~46%, corrected estimate ~61. Full data: docs/MEASUREMENTS.md.
+- One-hour uninterrupted live run: 1,800 frames, **1,001 passers-by** (16.7/min, peak 40/min),
+  recall ~70% over the hour → corrected ≈ 1,430. Chart: assets/hour-live-run-chart.png.

@@ -125,6 +125,10 @@ Measured on a real 1080p night street camera (see [docs/MEASUREMENTS.md](docs/ME
 - In flow mode, the detector's **recall was ~46%** on that night scene (8.0 visible detected
   vs 17.5 seen by the VLM). Raw tracker passes are therefore a **floor**; `--vlm-check`
   measures the recall and reports a corrected estimate (28 → ~61 passes over 80 s of video).
+- **One uninterrupted hour of that camera** (1,800 frames, 1 every 2 s): **1,001 people counted
+  passing** (16.7/min, peak 40/min), recall ~70% over the hour → corrected ≈ **1,430/hour**.
+  Every minute of that hour had at least one passer-by. Raw run + chart in
+  [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
 - False positives do happen (a table with a candle was once "a person") — validate visually
   before trusting a threshold-critical number.
 

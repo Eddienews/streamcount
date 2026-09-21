@@ -52,6 +52,31 @@ Deterministic replay is the recommended way to compare parameters: capture frame
 ffmpeg (`-vf fps=1/2 -frames:v 40`), then run `streamcount run --images capture ...` — same
 input every time.
 
+## One-hour live run (the strongest evidence in this repo)
+
+2026-09-21, 00:31–01:30 local time, same night street camera, `--tiles 2 --conf 0.25 --interval 2
+--flow --flow-min-hits 3 --flow-min-move 40 --vlm-check 60`, single uninterrupted process.
+
+| metric | value |
+|---|---|
+| frames processed | **1,800** (1 every 2 s; 59.8 min of wall time, no drift) |
+| passers-by counted (floor) | **1,001** (16.7/min) |
+| peak minute | **40/min** (minute 19); other busy minutes: 0 (30), 1 (28), 24 (28), 40 (30) |
+| minutes with zero passers-by | **0** — the street never emptied at any point in the hour |
+| most confirmations in one sample | 6 |
+| discarded short tracks (noise) | 872 of ~1,500 spawned ids (≈1 in 3; filtered by `--flow-min-hits 3`) |
+| confirmed but stationary | 55 (never counted — vendors/buskers) |
+| VLM recall checks | 33 (every 60 s): yolo visible 8.3 vs VLM 11.8 → **recall ≈ 70 %** |
+| recall-corrected estimate | **≈ 1,430 passers-by/hour (≈ 24/min)** |
+
+Chart: `assets/hour-live-run-chart.png`. Raw data: `frames.csv` + `events.csv` of that run.
+
+Two things this hour proves beyond the shorter runs: the pipeline holds for an hour without
+drift or leaks (1,800/1,800 frames, stable ~0.7 s/frame CPU), and detector recall in this
+scene is **density-dependent** — ~46 % during a dense-crowd window vs **70 % averaged over
+the full hour** — which is exactly why the tool reports a range (floor → recall-corrected)
+instead of a single number.
+
 ## Dense-crowd behaviour (live, 00:11–00:12)
 
 | moment | yolo (`--tiles 2`) | VLM | manual |
