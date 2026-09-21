@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Runtime outputs (never commit data or keys)
+runs/
+outputs/
+models/
+.env
+
+# OS
+.DS_Store
+Thumbs.db

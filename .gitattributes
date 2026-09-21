@@ -1,0 +1,7 @@
+# Normalise line endings across platforms; keep binaries binary.
+* text=auto eol=lf
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.onnx binary
+*.sh text eol=lf

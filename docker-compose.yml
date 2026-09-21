@@ -1,0 +1,15 @@
+services:
+  streamcount:
+    build: .
+    image: streamcount:0.1.0
+    environment:
+      # bring your own key — only needed for --engine vlm / both
+      STREAMCOUNT_VLM_KEY: ${STREAMCOUNT_VLM_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      STREAMCOUNT_HOME: /data
+    volumes:
+      - ./data:/data
+    working_dir: /data
+    # example: count who passes for one hour on an HLS stream
+    # command: ["run", "--url", "https://example.com/playlist.m3u8", "--engine", "yolo",
+    #           "--tiles", "2", "--flow", "--interval", "2", "--frames", "1800"]

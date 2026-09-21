@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamcount"
+version = "0.1.0"
+description = "Count people and vehicles in any live stream or recording — YouTube, HLS, RTSP, files — using a local ONNX detector (no API cost) or a vision LLM (bring your own key)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Eddie" }]
+keywords = [
+    "people-counting", "crowd-counting", "vehicle-counting", "yolo", "onnx",
+    "vision-llm", "vlm", "hls", "youtube", "rtsp", "computer-vision", "tracking",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "numpy>=1.24",
+    "pillow>=10.0",
+    "requests>=2.31",
+    "onnxruntime>=1.16",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.4"]
+
+[project.scripts]
+streamcount = "streamcount.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Eddienews/streamcount"
+Issues = "https://github.com/Eddienews/streamcount/issues"
+Changelog = "https://github.com/Eddienews/streamcount/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["streamcount*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
