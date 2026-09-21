@@ -69,7 +69,9 @@ input every time.
 | VLM recall checks | 33 (every 60 s): yolo visible 8.3 vs VLM 11.8 → **recall ≈ 70 %** |
 | recall-corrected estimate | **≈ 1,430 passers-by/hour (≈ 24/min)** |
 
-Chart: `assets/hour-live-run-chart.png`. Raw data: `frames.csv` + `events.csv` of that run.
+Chart: `assets/hour-live-run-chart.png`. Animated replay of the same data (bars filling minute
+by minute): `assets/hour-live-run.gif`, rendered with `scripts/render_hour_gif.py`.
+Raw data: `frames.csv` + `events.csv` of that run.
 
 Two things this hour proves beyond the shorter runs: the pipeline holds for an hour without
 drift or leaks (1,800/1,800 frames, stable ~0.7 s/frame CPU), and detector recall in this

@@ -10,9 +10,11 @@ and unique passers-by, with a local ONNX detector (free, offline) or a vision LL
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-<img src="assets/screenshot-flow-live.jpg" width="640" alt="Live flow counting on a night street camera — each tracked person gets an id and the running total of passers-by is shown">
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/screenshot-flow-live.jpg" width="640" alt="Live flow counting on a night street camera — each tracked person gets an id and the running total of passers-by is shown">
 
-<img src="assets/demo.gif" width="640" alt="Animated demo: tracked ids on a live night street, running pass total in the corner">
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/demo.gif" width="640" alt="Animated demo: tracked ids on a live night street, running pass total in the corner">
+
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/hour-live-run.gif" width="640" alt="One-hour live run replayed minute by minute: passers-by per minute (bars) and cumulative total (line)">
 
 </div>
 

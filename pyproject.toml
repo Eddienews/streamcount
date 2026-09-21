@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "Count people and vehicles in any live stream or recording — YouTube, HLS, RTSP, files — using a local ONNX detector (no API cost) or a vision LLM (bring your own key)."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE", "NOTICE.md"]
 authors = [{ name = "Eddie" }]
 keywords = [
     "people-counting", "crowd-counting", "vehicle-counting", "yolo", "onnx",
@@ -18,7 +19,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

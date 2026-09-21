@@ -1,0 +1,8 @@
+include README.md LICENSE NOTICE.md CHANGELOG.md CONTRIBUTING.md .env.example
+include Dockerfile docker-compose.yml
+recursive-include docs *.md
+recursive-include examples *.sh *.md
+recursive-include scripts *.py
+recursive-include assets *.jpg *.png *.gif
+recursive-include .github *.yml
+global-exclude __pycache__ *.py[cod]
