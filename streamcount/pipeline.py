@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from .detector import Detector
+from .detector import VEHICLE_CLASSES, Detector, resolve_classes
 from .sources import (
     frames_from_ffmpeg,
     frames_from_images,
@@ -138,14 +138,14 @@ def run(config: RunConfig) -> RunResult:
         from .detector import ensure_model
 
         model_path = config.model or ensure_model("yolov8n-pose")
-        classes = tuple(c.strip() for c in config.target.split(",") if c.strip())
+        classes = resolve_classes(config.target)
         detector = Detector(
             model_path,
             conf=config.conf,
             iou=config.iou,
             tiles=config.tiles,
             tile_overlap=config.tile_overlap,
-            classes=classes or ("person",),
+            classes=classes,
         )
     vlm_needed = config.engine in ("vlm", "both") or (config.flow and config.vlm_check > 0)
     if vlm_needed:
@@ -155,7 +155,8 @@ def run(config: RunConfig) -> RunResult:
                 "VLM engine needs an API key: --vlm-key, STREAMCOUNT_VLM_KEY or "
                 "OPENROUTER_API_KEY (env or .env file)"
             )
-        vlm_target = config.target if config.target in ("people", "cars") else "people"
+        resolved = set(resolve_classes(config.target))
+        vlm_target = "cars" if resolved & set(VEHICLE_CLASSES) else "people"
         vlm = VlmCounter(key, base_url=config.vlm_base_url, model=config.vlm_model,
                          target=vlm_target)
         _log(f"[info] VLM: {config.vlm_model} @ {config.vlm_base_url} (key from {origin})")

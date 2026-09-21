@@ -89,6 +89,26 @@ instead of a single number.
 In dense scenes the VLM tends to over-count and the nano detector under-counts; both should
 be read as ±10–20 %.
 
+## Vehicle counting (validated 2026-09-21)
+
+Source: a downtown NYC driving video (YouTube, 4K), `--target cars`, `yolo11n` COCO ONNX
+(10.7 MB, 113 ms/frame), conf 0.35, three sampled frames.
+
+| frame | detector (vehicles) | VLM (cars prompt) | manual |
+|---|---|---|---|
+| 1 | 4 | 6 | 4 clear + 1 partially occluded |
+| 2 | 4 | 6 | ~4–5 |
+| 3 | 4 | 6 | ~4–5 |
+
+The four detector boxes sat on real vehicles (taxi partially in frame, SUV, two cars behind);
+the VLM consistently counted 6, plausibly including vehicles hidden behind the SUV. As with
+people: report the range, not a single number.
+
+Note: this validation **caught a crash bug** in the COCO decode path (scores were not masked
+along with the boxes, breaking NMS on the first real detection model run). Fixed, with
+regression tests in `tests/test_detector_decode.py`. It is the reason this repo ships a
+vehicle validation at all — the pose path had never exercised that code.
+
 ## Non-camera sources (ingestion checks)
 
 | source | method | result |

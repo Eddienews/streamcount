@@ -8,6 +8,7 @@ streamcount itself is MIT (see LICENSE). It **does not bundle** detection model 
 |---|---|---|
 | `yolov8n-pose` (default) | Hugging Face `Xenova/yolov8n-pose` (ONNX export) | Ultralytics YOLOv8 — **AGPL-3.0** |
 | `yolov8s-pose` | Hugging Face `Xenova/yolov8s-pose` (ONNX export) | Ultralytics YOLOv8 — **AGPL-3.0** |
+| `yolo11n` (COCO 80 classes, people + vehicles) | Hugging Face `webnn/yolo11n` (ONNX export) | Ultralytics YOLO11 — **AGPL-3.0** |
 
 The AGPL-3.0 of the *weights* is separate from this repository's MIT license. If you use
 streamcount commercially, either comply with AGPL-3.0 or supply your own weights via

@@ -81,6 +81,19 @@ streamcount find-stream "https://www.earthcam.com/usa/louisiana/neworleans/bourb
 streamcount report runs/20260921_003057_yolo_hora1 --chart chart.png
 ```
 
+### Counting vehicles
+
+```bash
+streamcount download-model --variant yolo11n          # COCO 80-class export (~10 MB)
+streamcount run --video traffic.mp4 --target cars \
+    --model ~/.cache/streamcount/models/yolo11n.onnx --conf 0.35 --frames 60
+```
+
+Vehicles need a COCO detection model. The default pose model is people-only and says so
+loudly if you point it at `--target cars`. Validated on a downtown NYC driving video:
+the detector boxed 4/4 visible vehicles per frame; the VLM, asked for cars, said 6 — it
+plausibly counts partially occluded vehicles that the detector skips. Treat the pair as a range.
+
 Outputs (one folder per run):
 
 | file | content |
@@ -181,7 +194,7 @@ batch endpoints (~50 % cheaper). Full table and provider comparison (qwen, gemma
 
 ## Roadmap
 
-- [ ] COCO detection model variant + validated vehicle counting (`--target cars`)
+- [x] COCO detection model variant + validated vehicle counting (`--target cars`)
 - [ ] Zones / line-crossing counts (in/out direction)
 - [ ] Web UI (paste link → live dashboard)
 - [ ] Re-ID across longer occlusions
@@ -190,7 +203,7 @@ batch endpoints (~50 % cheaper). Full table and provider comparison (qwen, gemma
 ## Contributing
 
 Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The tracker has an offline
-test suite (`pytest`, 26 tests) so you can hack on it without a camera or a key.
+test suite (`pytest`, 33 tests) so you can hack on it without a camera or a key.
 
 ## License
 

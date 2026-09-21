@@ -45,7 +45,36 @@ MODEL_URLS = {
         "https://huggingface.co/Xenova/yolov8s-pose/resolve/main/onnx/model.onnx",
         46_787_284,
     ),
+    # COCO 80-class detection export (people AND vehicles), same output layout as v8
+    "yolo11n": (
+        "https://huggingface.co/webnn/yolo11n/resolve/main/onnx/yolo11n.onnx",
+        10_720_228,
+    ),
 }
+
+VEHICLE_CLASSES = ("car", "motorcycle", "bus", "truck")
+TARGET_ALIASES = {
+    "people": ("person",),
+    "person": ("person",),
+    "cars": VEHICLE_CLASSES,
+    "vehicles": VEHICLE_CLASSES,
+}
+
+
+def resolve_classes(target: str) -> tuple[str, ...]:
+    """Map a CLI target ('people', 'cars', 'people,cars') to COCO class names."""
+    resolved: list[str] = []
+    for part in (p.strip().lower() for p in (target or "").split(",") if p.strip()):
+        if part in TARGET_ALIASES:
+            resolved.extend(TARGET_ALIASES[part])
+        elif part in COCO80:
+            resolved.append(part)
+    return tuple(dict.fromkeys(resolved)) or ("person",)
+
+
+def class_filter(names: list[str], classes: tuple[str, ...]) -> set[int]:
+    """Indices of the classes we want to keep, given a model's class names."""
+    return {index for index, name in enumerate(names) if name in classes}
 
 Detection = tuple[float, float, float, float, float, str]  # x1, y1, x2, y2, score, label
 
@@ -82,6 +111,28 @@ def ensure_model(variant: str = "yolov8n-pose") -> Path:
     return dest
 
 
+def select_detections(pred: np.ndarray, conf_thr: float, wanted: set[int],
+                      names: list[str], is_pose: bool):
+    """Filter raw YOLO predictions (rows = candidates) down to the detections we keep.
+
+    Returns ``(xywh, scores, labels)`` in letterbox coordinates, with scores and boxes
+    always the same length (that invariant is exactly what the 0.1.0 COCO path broke).
+    """
+    if is_pose:
+        scores_all = pred[:, 4]
+        mask = scores_all >= conf_thr
+        sel = pred[mask]
+        return sel[:, :4], scores_all[mask], ["person"] * int(mask.sum())
+
+    class_scores = pred[:, 4: 4 + len(names)]
+    class_ids_all = class_scores.argmax(axis=1)
+    conf_all = class_scores[np.arange(len(pred)), class_ids_all]
+    mask = (conf_all >= conf_thr) & np.isin(class_ids_all, sorted(wanted))
+    sel = pred[mask]
+    labels = [names[int(c)] for c in class_ids_all[mask]]
+    return sel[:, :4], conf_all[mask], labels
+
+
 class Detector:
     def __init__(
         self,
@@ -116,7 +167,15 @@ class Detector:
         self.is_pose = channels == 56
         self.num_classes = 1 if self.is_pose else int(channels) - 4
         names = ["person"] if self.is_pose else COCO80[: self.num_classes]
-        self.wanted = {i for i, n in enumerate(names) if n in classes} or {0}
+        self.wanted = class_filter(names, classes)
+        if not self.wanted and self.is_pose:
+            raise SystemExit(
+                f"this ONNX export only detects people (pose model), but --target asked for "
+                f"{', '.join(classes)}. Use a COCO detection model instead, e.g. "
+                f"`streamcount download-model --variant yolo11n` and `--model <cache>/yolo11n.onnx`."
+            )
+        if not self.wanted:
+            self.wanted = {0}
         self.names = names
 
     # ------------------------------------------------------------------ tiling
@@ -216,31 +275,19 @@ class Detector:
         tensor = canvas.astype(np.float32).transpose(2, 0, 1)[None] / 255.0
         pred = self.session.run(None, {self.input_name: tensor})[0][0].T  # (8400, 4+nc|56)
 
-        if self.is_pose:
-            conf = pred[:, 4]
-            sel = pred[conf >= self.conf]
-            if sel.size == 0:
-                return []
-            labels = ["person"] * len(sel)
-        else:
-            class_scores = pred[:, 4: 4 + self.num_classes]
-            class_ids = class_scores.argmax(axis=1)
-            conf = class_scores[np.arange(len(pred)), class_ids]
-            mask = (conf >= self.conf) & np.isin(class_ids, list(self.wanted))
-            sel = pred[mask]
-            class_ids = class_ids[mask]
-            labels = [self.names[int(c)] for c in class_ids]
-            if sel.size == 0:
-                return []
+        xywh, scores, labels = select_detections(
+            pred, self.conf, self.wanted, self.names, self.is_pose
+        )
+        if len(scores) == 0:
+            return []
 
-        cx, cy, bw, bh = sel[:, 0], sel[:, 1], sel[:, 2], sel[:, 3]
+        cx, cy, bw, bh = xywh[:, 0], xywh[:, 1], xywh[:, 2], xywh[:, 3]
         boxes = np.stack([cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2], axis=1)
         boxes[:, [0, 2]] = (boxes[:, [0, 2]] - dw) / scale
         boxes[:, [1, 3]] = (boxes[:, [1, 3]] - dh) / scale
         boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, w)
         boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, h)
 
-        scores = sel[:, 4] if self.is_pose else conf
         keep = self._nms(boxes, np.asarray(scores, dtype=np.float32), self.iou_thr)
         return [
             (float(boxes[i, 0]), float(boxes[i, 1]), float(boxes[i, 2]), float(boxes[i, 3]),

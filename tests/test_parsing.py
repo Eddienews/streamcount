@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from streamcount.detector import Detector
+from streamcount.detector import COCO80, Detector, class_filter, resolve_classes
 from streamcount.pipeline import _default_timeline
 from streamcount.sources import extract_playlist_urls, is_youtube, parse_headers
 from streamcount.vlm import parse_count_response
@@ -89,3 +89,25 @@ def test_nms_removes_overlap():
     scores = np.array([0.9, 0.8, 0.7])
     keep = Detector._nms(boxes, scores, 0.5)
     assert keep == [0, 2]
+
+
+# ------------------------------------------------------------------- targets
+def test_resolve_classes_aliases():
+    assert resolve_classes("people") == ("person",)
+    assert resolve_classes("cars") == ("car", "motorcycle", "bus", "truck")
+    assert resolve_classes("people,cars") == ("person", "car", "motorcycle", "bus", "truck")
+
+
+def test_resolve_classes_direct_coco_names():
+    assert resolve_classes("truck,person") == ("truck", "person")
+    assert resolve_classes("") == ("person",)
+    assert resolve_classes("garbage") == ("person",)
+
+
+def test_class_filter_matches_coco_indices():
+    # COCO indices: person=0, car=2, motorcycle=3, bus=5, truck=7
+    assert class_filter(COCO80, resolve_classes("cars")) == {2, 3, 5, 7}
+    assert class_filter(COCO80, resolve_classes("people,cars")) == {0, 2, 3, 5, 7}
+    # pose exports are person-only: asking for vehicles yields an empty filter,
+    # which the Detector turns into a clear SystemExit instead of silent people counting
+    assert class_filter(["person"], resolve_classes("cars")) == set()

@@ -10,7 +10,7 @@ git clone https://github.com/Eddienews/streamcount
 cd streamcount
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest                                            # 26 tests, all offline
+pytest                                            # 33 tests, all offline
 ruff check .
 ```
 
@@ -44,7 +44,6 @@ Report the summary block (`FLOW:` line, discarded tracks, recall) in your PR.
 
 ## Good first issues
 
-- COCO detection model variant so `--target cars` works with the local engine.
 - Direction in flow mode (did the person enter or leave?).
 - `--output-webhook` for threshold alerts.
 - Windows/GPU (CUDA / DirectML) execution-provider support in `detector.py`.

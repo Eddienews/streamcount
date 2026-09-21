@@ -20,12 +20,22 @@ First public version.
   the pipeline reports a corrected pass estimate alongside the raw floor.
 - `streamcount find-stream`: extracts a fresh (expiring-token) HLS URL from webcam pages.
 - `streamcount download-model`: pre-fetches ONNX weights into the local cache.
+- COCO detection model variant (`yolo11n`, 10.7 MB) and `--target cars` — vehicle counting
+  validated on a real traffic video (detector 4/4 vehicles boxed; see docs/MEASUREMENTS.md).
 - `streamcount report`: per-minute pass rates, peak minute, optional chart PNG (Pillow only),
   tolerant of legacy events files.
-- Demo GIF (`assets/demo.gif`) generated from a real live flow run.
-- Outputs: `frames.csv`, `events.csv`, annotated frames, `summary.json`.
-- Offline test suite (26 tests) covering the tracker, reporting, parsing, URL helpers and box merging.
-- Dockerfile + docker-compose, GitHub Actions CI.
+- Demo GIF (`assets/demo.gif`) generated from a real live flow run; animated one-hour chart
+  (`assets/hour-live-run.gif`, `scripts/render_hour_gif.py`).
+- Outputs: `frames.csv`, `events.csv`, annotated frames, `summary.json` (+ `chart.png` in flow runs).
+- Offline test suite (33 tests) covering the tracker, reporting, detector decode, parsing,
+  URL helpers and box merging.
+- Dockerfile + docker-compose, GitHub Actions CI + tag-driven release workflow.
+- PEP 639 license metadata; `sdist`/`wheel` build clean (`twine check` passes).
+
+### Fixed
+- COCO detection path crashed NMS (scores were not masked together with boxes) — caught by
+  the vehicle validation on first real detection-model run. Regression tests:
+  `tests/test_detector_decode.py`.
 
 ### Measured baseline (night street cam, 1080p)
 - Full-frame nano detector: 3 of ~12 people; tiles 2×2: 9-10 of ~12 (conf 0.25).
