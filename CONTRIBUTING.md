@@ -10,7 +10,7 @@ git clone https://github.com/Eddienews/streamcount
 cd streamcount
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest                                            # 17 tests, all offline
+pytest                                            # 26 tests, all offline
 ruff check .
 ```
 

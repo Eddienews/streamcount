@@ -94,6 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
     model_parser = sub.add_parser("download-model", help="pre-download ONNX model weights")
     model_parser.add_argument("--variant", default="yolov8n-pose", choices=sorted(MODEL_URLS))
 
+    report_parser = sub.add_parser(
+        "report", help="summarise a finished run: per-minute rates, peak, optional chart PNG"
+    )
+    report_parser.add_argument("run_dir", type=Path, help="run folder produced by `run`")
+    report_parser.add_argument("--chart", type=Path, default=None,
+                               help="write a per-minute bar/cumulative chart PNG here")
+
     return parser
 
 
@@ -108,6 +115,24 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "download-model":
         path = ensure_model(args.variant)
         print(f"model ready: {path}")
+        return 0
+
+    if args.command == "report":
+        from .report import build_report
+
+        report = build_report(args.run_dir, chart_path=args.chart)
+        if not report["passes"] and not report["passes_per_minute"]:
+            print(f"no pass events found in {args.run_dir} (is it a --flow run?)")
+            return 2
+        duration = f" in {report['duration_min']} min" if report["duration_min"] else ""
+        print(f"passers-by: {report['passes']}{duration}")
+        print(f"rate: mean {report['mean_per_minute']}/min | peak {report['peak_per_minute']}/min")
+        if report.get("recall"):
+            print(f"detector recall ~{report['recall'] * 100:.0f}% -> recall-corrected estimate "
+                  f"~{report['passes_recall_corrected']}")
+        print("per-minute: " + ", ".join(str(v) for v in report["passes_per_minute"]))
+        if report.get("chart"):
+            print(f"chart: {report['chart']}")
         return 0
 
     if args.command != "run":

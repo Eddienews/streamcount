@@ -20,8 +20,11 @@ First public version.
   the pipeline reports a corrected pass estimate alongside the raw floor.
 - `streamcount find-stream`: extracts a fresh (expiring-token) HLS URL from webcam pages.
 - `streamcount download-model`: pre-fetches ONNX weights into the local cache.
+- `streamcount report`: per-minute pass rates, peak minute, optional chart PNG (Pillow only),
+  tolerant of legacy events files.
+- Demo GIF (`assets/demo.gif`) generated from a real live flow run.
 - Outputs: `frames.csv`, `events.csv`, annotated frames, `summary.json`.
-- Offline test suite (17 tests) covering the tracker, parsing, URL helpers and box merging.
+- Offline test suite (26 tests) covering the tracker, reporting, parsing, URL helpers and box merging.
 - Dockerfile + docker-compose, GitHub Actions CI.
 
 ### Measured baseline (night street cam, 1080p)

@@ -12,6 +12,8 @@ and unique passers-by, with a local ONNX detector (free, offline) or a vision LL
 
 <img src="assets/screenshot-flow-live.jpg" width="640" alt="Live flow counting on a night street camera — each tracked person gets an id and the running total of passers-by is shown">
 
+<img src="assets/demo.gif" width="640" alt="Animated demo: tracked ids on a live night street, running pass total in the corner">
+
 </div>
 
 ---
@@ -72,6 +74,9 @@ streamcount run --url "$STREAM" --engine yolo --tiles 2 --interval 2 --frames 18
 
 # Webcam pages hide expiring tokens: extract a fresh stream URL
 streamcount find-stream "https://www.earthcam.com/usa/louisiana/neworleans/bourbonstreet/" --cam-id 4280
+
+# After a run: per-minute rates, peak minute, and a chart PNG
+streamcount report runs/20260921_003057_yolo_hora1 --chart chart.png
 ```
 
 Outputs (one folder per run):
@@ -179,7 +184,7 @@ batch endpoints (~50 % cheaper). Full table and provider comparison (qwen, gemma
 ## Contributing
 
 Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The tracker has an offline
-test suite (`pytest`, 17 tests) so you can hack on it without a camera or a key.
+test suite (`pytest`, 26 tests) so you can hack on it without a camera or a key.
 
 ## License
 
