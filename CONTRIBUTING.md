@@ -19,6 +19,10 @@ You do **not** need a camera, a stream or an API key to develop: the test suite 
 35 offline tests (tracker, reporting, decode, parsing, URL helpers, box merging) and 3
 end-to-end tests marked `e2e` that need ffmpeg and run the real pipeline on a synthetic video.
 
+For a human walk-through of the tool itself (replay, live HLS, YouTube, vehicles, Docker,
+report), follow [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md) — ten minutes, exact commands,
+expected numbers.
+
 ## What makes a good PR here
 
 1. **One behaviour per PR**, with a test that fails before and passes after.

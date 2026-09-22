@@ -44,7 +44,8 @@ git clone https://github.com/Eddienews/streamcount
 cd streamcount && python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-# or with Docker (ffmpeg included)
+# or with Docker (ffmpeg included; runs and the model cache land in ./data — validated
+# end-to-end, see docs/MEASUREMENTS.md)
 docker compose run --rm streamcount run --youtube "https://www.youtube.com/watch?v=..." --frames 5
 ```
 
@@ -205,7 +206,7 @@ This project publishes both what it does and what it has *not* been tested again
 | **Run length** | longest validated run: **1 hour** (1,800 frames). Memory/stability beyond that is unverified. |
 | **Platforms** | integration (ffmpeg/yt-dlp pipes) exercised on **Windows**; CI runs the offline unit suite plus an ffmpeg end-to-end smoke test on Linux. macOS untested. |
 | **Scenes** | two scenes measured (night pedestrian street; daytime traffic). Rain, snow, extreme crowds untested. |
-| **Docker** | Dockerfile + compose are provided; validate the image on your host before relying on it. |
+| **Docker** | image **validated end-to-end**: built from `Dockerfile`, ran the full pipeline (ffmpeg + ONNX inside the container) on a mounted volume, model cache persisted to the host. Compose file: config-validated only. |
 | **YouTube** | extraction depends on yt-dlp and occasionally on a JS runtime or cookies; expect periodic breakage as YouTube changes. |
 | **Re-identification** | a person leaving and returning after > 15 s is counted a second time (technically two visits). |
 | **Model licenses** | bundled *downloads* are AGPL-3.0 Ultralytics weights — commercial users should swap in their own model (see NOTICE.md). |
@@ -222,7 +223,8 @@ This project publishes both what it does and what it has *not* been tested again
 
 Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The test suite is split into
 35 offline tests and 3 end-to-end tests (`pytest -m e2e`, needs ffmpeg) so you can hack on it
-without a camera or a key.
+without a camera or a key. Want to just *use* it first? [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)
+walks through every source type in ten minutes.
 
 ## License
 

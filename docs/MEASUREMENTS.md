@@ -125,6 +125,22 @@ local camera server was raised on the dev machine:
 What this does **not** prove: behaviour against a physical camera (ONVIF auth, flaky Wi-Fi,
 hardware encoders) — still on the "not verified" list in the README.
 
+## Docker image (validated 2026-09-21)
+
+The Dockerfile had never been built — it was written, not exercised. Built and run on
+Windows 11 + Docker Desktop 27.3.1:
+
+| step | evidence |
+|---|---|
+| build | `docker build` → `python:3.11-slim` + ffmpeg + `pip install .` in 6m56s |
+| CLI | `docker run --rm streamcount:test --version` → `streamcount 0.1.0`; `--help` renders |
+| compose | `docker compose config -q` → valid |
+| full run | `docker run --rm -v <host-dir>:/data streamcount:test run --video /data/test.mp4 --frames 3 --flow` → 3/3 frames (420–836 ms each), `frames.csv`, `events.csv`, `chart.png`, `summary.json` written **on the host** via the volume |
+| model cache | `yolov8n-pose.onnx` downloaded inside the container → `/data/models/` on the host (13,484,153 bytes — the expected size), so the cache survives the container |
+
+Note: run-directory names use the container clock, which is **UTC** by default — pass
+`-e TZ=America/New_York` (or your zone) if you want local timestamps in folder names.
+
 ## Non-camera sources (ingestion checks)
 
 | source | method | result |

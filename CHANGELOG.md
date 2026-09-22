@@ -32,7 +32,8 @@ First public version.
   URL helpers and box merging — plus **3 end-to-end tests** with real ffmpeg + ONNX inference
   on a synthetic video (CI job `e2e`).
 - README "Known limitations" table: scope, coverage and open risks stated up front.
-- Dockerfile + docker-compose, GitHub Actions CI + tag-driven release workflow.
+- Dockerfile + docker-compose (image validated end-to-end: full pipeline ran inside the
+  container with a host volume), GitHub Actions CI + tag-driven release workflow.
 - PEP 639 license metadata; `sdist`/`wheel` build clean (`twine check` passes).
 
 ### Fixed
