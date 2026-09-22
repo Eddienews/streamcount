@@ -88,8 +88,9 @@ counted nobody is a valid result (`passers-by: 0`, exit 0).]
   measure recall on your own scene and read the corrected range.
 - **The VLM is not deterministic** (12/13/12 on the same frame at temperature 0) — expect a
   range from repeated runs.
-- **Failure looks like**: `No frames received`, ffmpeg HTTP 403 (missing/wrong `Referer`),
-  an expired `t=`/`td=` token in a webcam URL, or `yt-dlp failed` (usually a JS runtime or a
-  video that needs sign-in).
+- **Failure looks like**: `ERROR: 0 frames received` with **exit code 3** (typo in the URL,
+  expired `t=`/`td=` token, missing `Referer`, or the stream is offline), ffmpeg HTTP 403,
+  or `yt-dlp failed` (usually a JS runtime or a video that needs sign-in). A run that got
+  frames but counted nobody exits 0 with `passers-by: 0` — that one is a valid result.
 - When reporting a problem, include: the command, the source type (HLS/YouTube/file), and
   the run folder (it has `frames.csv`, `summary.json` and the log).

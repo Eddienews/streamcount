@@ -29,14 +29,17 @@ First public version.
   (`assets/hour-live-run.gif`, `scripts/render_hour_gif.py`).
 - Outputs: `frames.csv`, `events.csv`, annotated frames, `summary.json` (+ `chart.png` in flow runs).
 - Offline test suite (35 tests) covering the tracker, reporting, detector decode, parsing,
-  URL helpers and box merging — plus **3 end-to-end tests** with real ffmpeg + ONNX inference
-  on a synthetic video (CI job `e2e`).
+  URL helpers and box merging — plus **4 end-to-end tests** with real ffmpeg + ONNX inference
+  on a synthetic video (CI job `e2e`), including the zero-frames failure mode.
 - README "Known limitations" table: scope, coverage and open risks stated up front.
 - Dockerfile + docker-compose (image validated end-to-end: full pipeline ran inside the
   container with a host volume), GitHub Actions CI + tag-driven release workflow.
 - PEP 639 license metadata; `sdist`/`wheel` build clean (`twine check` passes).
 
 ### Fixed
+- A run that received **zero frames** (typo'd URL, expired token, missing `Referer`, offline
+  stream) now prints an explicit `ERROR: 0 frames received` and exits **3**, instead of
+  looking like a successful empty run. Covered by an e2e test.
 - COCO detection path crashed NMS (scores were not masked together with boxes) — caught by
   the vehicle validation on first real detection-model run. Regression tests:
   `tests/test_detector_decode.py`.

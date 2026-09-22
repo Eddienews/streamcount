@@ -11,7 +11,7 @@ cd streamcount
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 pytest -m "not e2e"                               # 35 tests, all offline
-pytest -m e2e                                     # 3 tests using ffmpeg + the real ONNX model
+pytest -m e2e                                     # 4 tests using ffmpeg + the real ONNX model
 ruff check .
 ```
 

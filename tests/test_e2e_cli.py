@@ -92,3 +92,14 @@ def test_cli_run_without_source_fails_clearly(tmp_path: Path) -> None:
     result = _cli(["run"], cwd=tmp_path)
     assert result.returncode == 2
     assert "provide a source" in result.stderr
+
+
+def test_cli_run_with_unreadable_source_exits_3(tmp_path: Path) -> None:
+    """A source that yields zero frames must fail loudly, not look like an empty run."""
+    result = _cli(
+        ["run", "--video", str(tmp_path / "does-not-exist.mp4"), "--frames", "2",
+         "--out", str(tmp_path / "runs")],
+        cwd=tmp_path,
+    )
+    assert result.returncode == 3, result.stdout + result.stderr
+    assert "0 frames received" in result.stderr

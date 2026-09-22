@@ -222,7 +222,7 @@ This project publishes both what it does and what it has *not* been tested again
 ## Contributing
 
 Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The test suite is split into
-35 offline tests and 3 end-to-end tests (`pytest -m e2e`, needs ffmpeg) so you can hack on it
+35 offline tests and 4 end-to-end tests (`pytest -m e2e`, needs ffmpeg) so you can hack on it
 without a camera or a key. Want to just *use* it first? [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)
 walks through every source type in ten minutes.
 

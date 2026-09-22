@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -357,6 +358,16 @@ def run(config: RunConfig) -> RunResult:
     if events_path:
         _log(f"events: {events_path}")
     _log(f"summary: {summary_path}")
+
+    if frames_done == 0:
+        print(
+            "ERROR: 0 frames received — the source could not be read (typo in the URL, "
+            "expired token, missing --headers 'Referer=...', or the stream is offline).\n"
+            f"       the (empty) run folder is still at {run_dir} for inspection.",
+            file=sys.stderr,
+            flush=True,
+        )
+        result.exit_code = 3
 
     result.run_dir = run_dir
     result.csv_path = csv_path
