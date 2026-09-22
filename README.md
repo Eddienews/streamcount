@@ -118,6 +118,13 @@ loudly if you point it at `--target cars`. Validated on a downtown NYC driving v
 the detector boxed 4/4 visible vehicles per frame; the VLM, asked for cars, said 6 — it
 plausibly counts partially occluded vehicles that the detector skips. Treat the pair as a range.
 
+The same target on a live camera — the Danube in Budapest (EarthCam), 2 s sampling, a session
+set to `--duration 10`: **114 vehicles in 10 minutes** (303 frames), every car on both roads
+boxed with its track id, and the run closed itself at the mark with its chart and a 25-second
+annotated `timelapse.mp4`.
+
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/cars-budapest.jpg" width="720" alt="streamcount counting traffic in Budapest: the Danube and the Parliament behind, cars, vans and a bus on the quay and the boulevard boxed and tagged with track ids">
+
 ## Live dashboard — paste a link, watch the count
 
 Don't want to read CSVs? Run the local dashboard, paste the link in the page, and watch the

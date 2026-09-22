@@ -61,6 +61,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
 - The dashboard *options* grid gained the hybrid pair: `vlm every (s)` (`--vlm-check`) and the
   **Jev router** switch (`--jev-router`) — the CLI's option-or-not, exposed, with keys still
   coming from the environment (the page never carries them).
+- New README asset `assets/cars-budapest.jpg`: a real 10-minute `--target cars` session on a
+  live Danube camera — 114 vehicles, 303 frames, self-closed at its `--duration 10` limit.
 
 ## [0.1.0] - 2026-09-21
 
