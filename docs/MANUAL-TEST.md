@@ -129,6 +129,9 @@ from a dark dense one (0.87, escalate).]
   `passes_recall_corrected` (all visible) is an upper-bound-style estimate — small VLMs
   over-count (measured 1.3-1.8× on a dense daytime scene), so read floor → moving → visible in
   that order of trust.
+- **Interval matters**: at `--interval 2` a pedestrian crossing in ~4 s may fail the 3-hit
+  confirmation — a paired same-window test measured +33 % passes at interval 1 (65 vs 49,
+  discards 101 → 41). Use 1 s when the count is the mission, 2 s for economy.
 - **The VLM is not deterministic** (12/13/12 on the same frame at temperature 0) — expect a
   range from repeated runs.
 - **Failure looks like**: `ERROR: 0 frames received` with **exit code 3** (typo in the URL,

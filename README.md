@@ -210,6 +210,11 @@ Measured on a real 1080p night street camera (see [docs/MEASUREMENTS.md](docs/ME
   110 confirmed passes vs 228 visible-based, while a manual audit of the check frames showed
   the small VLM over-counting ~1.3-1.8× (68 vs ~36-55) — the truth is far closer to the floor
   than to the ceiling. Trust the range.
+- **The sampling interval changes the count.** A paired test (two runs on the same camera over
+  the same 10 min window, interval 2 vs interval 1) measured **+33 % passes at interval 1**
+  (65 vs 49, short-track discards 101 → 41): at 2 s a pedestrian crossing in ~4 s gets 2-3
+  samples and often fails the 3-hit confirmation. Interval 2 behaves like an economical
+  **floor mode**; use `--interval 1` when the count itself is the mission.
 - **One uninterrupted hour of that camera** (1,800 frames, 1 every 2 s): **1,001 people counted
   passing** (16.7/min, peak 40/min), recall ~70% over the hour → corrected ≈ **1,430/hour**.
   Every minute of that hour had at least one passer-by. Raw run + chart in
