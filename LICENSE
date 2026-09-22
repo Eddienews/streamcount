@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-NOTE ON THIRD-PARTY MODELS
---------------------------
-streamcount does not bundle detection models. It downloads ONNX exports on
-first use (currently Ultralytics YOLOv8-pose exports hosted on Hugging Face).
-Ultralytics YOLOv8 models are licensed AGPL-3.0 by their authors; review that
-license before commercial use, or point --model at a model you are licensed to
-use. See NOTICE.md for details.
