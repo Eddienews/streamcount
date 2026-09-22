@@ -95,6 +95,22 @@ loudly if you point it at `--target cars`. Validated on a downtown NYC driving v
 the detector boxed 4/4 visible vehicles per frame; the VLM, asked for cars, said 6 — it
 plausibly counts partially occluded vehicles that the detector skips. Treat the pair as a range.
 
+## Live dashboard — paste a link, watch the count
+
+Don't want to read CSVs? Run the local dashboard, paste the link in the page, and watch the
+count update live (annotated frame every interval, passers-by, who is in scene, per-minute bars
+and the running log):
+
+```bash
+streamcount serve --port 8766 --open      # opens http://127.0.0.1:8766 in your browser
+```
+
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard: passers-by 81, per-minute bars, latest passes with track ids">
+
+It is a thin supervisor over `streamcount run` — same engines, same options, one page. The run
+is a **live session**: it stops when you press *stop*, not after the CLI default of 10 frames.
+Everything stays on your machine (bound to `127.0.0.1`; no data leaves it, keys included).
+
 Outputs (one folder per run):
 
 | file | content |
@@ -222,7 +238,7 @@ This project publishes both what it does and what it has *not* been tested again
 ## Contributing
 
 Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The test suite is split into
-35 offline tests and 4 end-to-end tests (`pytest -m e2e`, needs ffmpeg) so you can hack on it
+54 offline tests and 4 end-to-end tests (`pytest -m e2e`, needs ffmpeg) so you can hack on it
 without a camera or a key. Want to just *use* it first? [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)
 walks through every source type in ten minutes.
 

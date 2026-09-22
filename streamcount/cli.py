@@ -1,4 +1,4 @@
-"""Command line interface: streamcount run | find-stream | download-model."""
+"""Command line interface: streamcount run | serve | find-stream | download-model | report."""
 
 from __future__ import annotations
 
@@ -101,6 +101,13 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--chart", type=Path, default=None,
                                help="write a per-minute bar/cumulative chart PNG here")
 
+    serve_parser = sub.add_parser(
+        "serve", help="local live dashboard: paste a link, watch the count running")
+    serve_parser.add_argument("--port", type=int, default=8766, help="localhost port (default 8766)")
+    serve_parser.add_argument("--run-root", type=Path, default=Path("runs"),
+                              help="where dashboard runs are written (default: runs)")
+    serve_parser.add_argument("--open", action="store_true", help="open the page in your browser")
+
     return parser
 
 
@@ -133,6 +140,12 @@ def main(argv: list[str] | None = None) -> int:
         print("per-minute: " + ", ".join(str(v) for v in report["passes_per_minute"]))
         if report.get("chart"):
             print(f"chart: {report['chart']}")
+        return 0
+
+    if args.command == "serve":
+        from .webapp import serve as serve_dashboard
+
+        serve_dashboard(port=args.port, runs_root=args.run_root, open_browser=args.open)
         return 0
 
     if args.command != "run":

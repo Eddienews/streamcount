@@ -81,6 +81,19 @@ streamcount report runs/<run_dir> --chart chart.png
 [Expect: `passers-by: N`, per-minute table, peak minute, and a chart PNG. A run that
 counted nobody is a valid result (`passers-by: 0`, exit 0).]
 
+## 8. Live dashboard (paste the link, watch it count)
+
+```bash
+streamcount serve --port 8766 --open
+```
+
+Paste any link in the page (HLS, RTSP, YouTube, local file) and press *count*: the annotated
+frame refreshes every interval, next to passers-by, in-scene count, per-minute bars and the
+log tail. *stop* ends the run. The run is written to `runs/web/<run_dir>` like any other, so
+`streamcount report` works on it afterwards.
+
+[Expect: numbers climbing within ~15 s; a frame with red boxes and `id…` labels.]
+
 ## How to judge the result
 
 - **Counts are a floor.** The detector's recall was measured at 46–70 % depending on scene.

@@ -8,6 +8,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
 First public version.
 
 ### Added
+- `streamcount serve`: a **local live dashboard** (stdlib only, bound to 127.0.0.1) — paste a
+  link in the page and watch the count running: annotated frame every interval, passers-by,
+  in-scene count, per-minute bars, latest passes with ids, log tail, start/stop buttons.
+  Dashboard runs are live sessions (no frame cap) and land in `runs/web/`.
 - `streamcount run`: per-frame counting from HLS/RTSP/direct URLs, YouTube links (live and
   recordings, via yt-dlp), local videos and image folders. `rtsp://` sources get
   `-rtsp_transport tcp` automatically (validated against a local mediamtx server).
@@ -28,9 +32,9 @@ First public version.
 - Demo GIF (`assets/demo.gif`) generated from a real live flow run; animated one-hour chart
   (`assets/hour-live-run.gif`, `scripts/render_hour_gif.py`).
 - Outputs: `frames.csv`, `events.csv`, annotated frames, `summary.json` (+ `chart.png` in flow runs).
-- Offline test suite (35 tests) covering the tracker, reporting, detector decode, parsing,
-  URL helpers and box merging — plus **4 end-to-end tests** with real ffmpeg + ONNX inference
-  on a synthetic video (CI job `e2e`), including the zero-frames failure mode.
+- Offline test suite (54 tests) covering the tracker, reporting, detector decode, parsing,
+  dashboard routes, URL helpers and box merging — plus **4 end-to-end tests** with real ffmpeg
+  + ONNX inference on a synthetic video (CI job `e2e`), including the zero-frames failure mode.
 - README "Known limitations" table: scope, coverage and open risks stated up front.
 - Dockerfile + docker-compose (image validated end-to-end: full pipeline ran inside the
   container with a host volume), GitHub Actions CI + tag-driven release workflow.
