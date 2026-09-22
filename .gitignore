@@ -16,6 +16,8 @@ venv/
 runs/
 outputs/
 models/
+models-*/
+*.onnx
 .env
 
 # OS
