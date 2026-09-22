@@ -75,6 +75,9 @@ streamcount run --video my_recording.mp4 --seek 120 --engine both --frames 60
 streamcount run --url "$STREAM" --engine yolo --tiles 2 --interval 2 --frames 1800 \
     --flow --vlm-check 60 --annotate
 
+# A 30-minute mission that closes itself at the mark (mp4 included when --timelapse is on)
+streamcount run --url "$STREAM" --flow --tiles 2 --interval 2 --duration 30 --timelapse
+
 # Webcam pages hide expiring tokens: extract a fresh stream URL
 streamcount find-stream "https://www.earthcam.com/usa/louisiana/neworleans/bourbonstreet/" --cam-id 4280
 
@@ -87,8 +90,8 @@ streamcount report runs/20260921_003057_yolo_hora1 --chart chart.png
 `--vlm-check` spends one paid vision-model call on a fixed clock. `--jev-router` replaces the
 clock with a decision: every N seconds Jev (TypeSafe's System One model) is asked one typed
 question — *is the local reading likely wrong right now?* — and the anchor runs only when the
-answer says it is worth it (`--jev-threshold`, default 0.5, sets how suspicious Jev must be).
-Off by default; bring your own key.
+answer says it is worth it (`--jev-threshold`, default 0.5, sets how suspicious Jev must be;
+`--jev-model` picks the model, e.g. `jev-latest`). Off by default; bring your own key.
 
 ```bash
 export TYPESAFE_API_KEY=...        # console.typesafe.ai/settings/keys
@@ -137,9 +140,12 @@ under *options*) — a multi-hour session would otherwise write ~320 MB/h of JPE
 only ever needs the newest one. Tick *record mp4* and the run writes an annotated
 an annotated `timelapse.mp4` while it counts (the page links it as ▶ when available) — a compact video of
 the session that does not depend on the JPEGs staying on disk. The *options* grid also carries
-the hybrid pair — `vlm every (s)` and the **Jev router** switch; both stay off unless used, and
-the keys they need come from the environment (`OPENROUTER_API_KEY`, `TYPESAFE_API_KEY`), never
-from the page.
+the hybrid pair — `vlm every (s)` and the **Jev router** switch — plus a **time limit**
+(`duração (min)`, `0` = run until you press *stop*): set 30 and the session closes itself
+cleanly at the mark, saving the summary, the chart and the `timelapse.mp4` if *record mp4* was
+ticked. The model fields (`modelo vlm`, `servidor vlm`, `modelo jev`) point each AI leg at any
+OpenAI-compatible model the operator has a key for — Gemini, Jev or anything else. Those keys
+come from the environment (`OPENROUTER_API_KEY`, `TYPESAFE_API_KEY`), never from the page.
 
 Outputs (one folder per run):
 

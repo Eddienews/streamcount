@@ -80,6 +80,25 @@ def test_cli_flow_run_end_to_end(synthetic_video: Path, tmp_path: Path) -> None:
         "--keep-frames 2 must leave only the newest annotated frames on disk"
 
 
+def test_cli_duration_limit_closes_the_run(synthetic_video: Path, tmp_path: Path) -> None:
+    """--duration ends the session at the mark and still writes summary/chart/mp4."""
+    out = tmp_path / "runs"
+    result = _cli(
+        ["run", "--video", str(synthetic_video), "--frames", "200", "--interval", "0.5",
+         "--duration", "0.02", "--flow", "--timelapse", "--out", str(out)],
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "duration limit reached" in result.stdout, result.stdout
+
+    run_dir = next(out.iterdir())
+    summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
+    assert summary["duration_minutes"] == 0.02
+    assert 1 <= summary["frames"] < 200, "the limit must cut the run short"
+    assert (run_dir / "chart.png").exists(), "a duration-closed run must keep its chart"
+    assert (run_dir / "timelapse.mp4").exists(), "--timelapse must survive the auto-close"
+
+
 def test_cli_report_on_finished_run(synthetic_video: Path, tmp_path: Path) -> None:
     out = tmp_path / "runs"
     result = _cli(

@@ -22,6 +22,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
   when the answer says it is worth it. What leaves the machine is a paragraph of numbers, never
   a frame; a failing router escalates anyway (the anchor is the safe side); `summary.json`
   records `jev_router: {checks, escalations, skipped, errors, mean_latency_ms}`.
+- A **time limit** for any run: `run --duration MIN` (and `duração (min)` in the dashboard)
+  closes the session cleanly when the mark is reached — the same graceful path as the panel's
+  stop, so `summary.json` (with `duration_minutes`), `chart.png` and the `timelapse.mp4` are all
+  written. `0` keeps the old behaviour: run until stopped. Validated end to end: a run with
+  `--duration 0.02` stops short of its frame cap and still writes summary + chart + MP4.
+- **Model choice next to the switches**: the dashboard exposes `modelo vlm` + `servidor vlm`
+  (`--vlm-model`, `--vlm-base-url` — any OpenAI-compatible provider) and `modelo jev`
+  (`--jev-model`), so a run can use whichever model the operator has a key for. Keys stay in the
+  environment.
 
 ### Fixed
 - **EarthCam links now work without a manual `Referer`**: the HLS CDN answers 403 without one

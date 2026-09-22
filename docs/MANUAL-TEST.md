@@ -17,7 +17,7 @@ Requirements: Python 3.10+, `ffmpeg` on PATH. Add `yt-dlp` for YouTube sources.
 ## 1. Automated suite (offline, ~15 s)
 
 ```bash
-pytest -m "not e2e"     # [81 passed]
+pytest -m "not e2e"     # [82 passed]
 pytest -m e2e           # [4 passed] needs ffmpeg; downloads the default model once
 ```
 
@@ -98,7 +98,9 @@ minutes, `runs/web/<run_dir>/frames/` holds 10 JPEGs, not hundreds — dashboard
 the last 10 annotated frames (`--keep-frames`). Tick *record mp4* before pressing count to get
 an annotated `timelapse.mp4` in the run folder; the page shows a ▶ link once it exists. Press
 *stop* and the run closes gracefully — the folder gains `summary.json` + `chart.png`.
-*options* also carries `vlm every (s)` and the *Jev router* switch for a hybrid run.]
+*options* also carries `duração (min)` (a time limit — the run closes itself and keeps the mp4),
+`vlm every (s)`, the *Jev router* switch and the model fields (`modelo vlm`, `servidor vlm`,
+`modelo jev`) for a hybrid run.]
 
 ## 9. Optional: the Jev router (TypeSafe)
 

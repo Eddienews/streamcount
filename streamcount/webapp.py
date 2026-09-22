@@ -77,9 +77,18 @@ def build_run_command(python: str, runs_root: Path, tag: str, source_flag: str,
     conf = options.get("conf")
     if conf:
         cmd += ["--conf", f"{float(conf):g}"]
+    vlm_model = str(options.get("vlm_model") or "").strip()
+    if vlm_model:
+        cmd += ["--vlm-model", vlm_model]
+    vlm_base_url = str(options.get("vlm_base_url") or "").strip()
+    if vlm_base_url:
+        cmd += ["--vlm-base-url", vlm_base_url]
     # a dashboard run is a live session: it stops when the user presses stop, not after
     # the CLI default (10 frames on streams)
     cmd += ["--frames", str(int(options.get("frames") or 999_999))]
+    duration = float(options.get("duration") or 0)
+    if duration > 0:
+        cmd += ["--duration", f"{duration:g}"]
     target = options.get("target") or "people"
     cmd += ["--target", target]
     if target == "cars":
@@ -95,6 +104,9 @@ def build_run_command(python: str, runs_root: Path, tag: str, source_flag: str,
             cmd += ["--vlm-check", f"{vlm_check:g}"]
             if options.get("jev_router"):
                 cmd += ["--jev-router"]
+                jev_model = str(options.get("jev_model") or "").strip()
+                if jev_model:
+                    cmd += ["--jev-model", jev_model]
     return cmd
 
 
@@ -547,8 +559,12 @@ PAGE_HTML = """<!doctype html>
         </label>
         <label class="opt">confiança <input type="number" id="conf" value="0.25" min="0.05" max="0.9" step="0.05"></label>
         <label class="opt" id="lKeep">guardar frames <input type="number" id="keep" value="10" min="0" max="999" step="1"></label>
+        <label class="opt" id="lDuration">duração (min) <input type="number" id="duration" value="0" min="0" max="1440" step="5"></label>
         <label class="opt" id="lVlmCheck">vlm a cada (s) <input type="number" id="vlmcheck" value="0" min="0" max="3600" step="5"></label>
+        <label class="opt" id="lVlmModel">modelo vlm <input type="text" class="wide" id="vlmmodel" placeholder="google/gemini-2.5-flash-lite"></label>
+        <label class="opt" id="lVlmUrl">servidor vlm <input type="text" class="wide" id="vlmurl" placeholder="https://openrouter.ai/api/v1"></label>
         <label class="opt" id="lJev">roteador (Jev) <input type="checkbox" id="jev"></label>
+        <label class="opt" id="lJevModel">modelo jev <input type="text" id="jevmodel" placeholder="jev-latest"></label>
         <label class="opt">headers <input type="text" class="wide" id="headers" placeholder="Referer=https://www.earthcam.com/"></label>
       </div>
     </details>
@@ -580,14 +596,16 @@ const T = {
         last:"últimas passagens", idle:"sem contagem ativa", frames:"frames",
         interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames", record:"gravar mp4",
         target:"alvo", people:"pessoas", cars:"carros", vlmCheck:"vlm a cada (s)",
-        jev:"roteador (Jev)" },
+        jev:"roteador (Jev)", dur:"duração (min)", vlmModel:"modelo vlm",
+        vlmUrl:"servidor vlm", jevModel:"modelo jev" },
   en: { stopped:"idle", live:"counting", hint:"Paste a live stream or recording link",
         go:"count →", stop:"stop", adv:"options", passes:"passers-by", now:"in scene now",
         active:"moving", rate:"rate", perMinute:"passes per minute",
         last:"latest passes", idle:"no active run", frames:"frames",
         interval:"interval", engine:"engine", of:"of", keep:"keep frames", record:"record mp4",
         target:"target", people:"people", cars:"cars", vlmCheck:"vlm every (s)",
-        jev:"Jev router" }
+        jev:"Jev router", dur:"duration (min)", vlmModel:"vlm model",
+        vlmUrl:"vlm server", jevModel:"Jev model" }
 };
 let lang = localStorage.getItem("sc-lang") || "en";
 function applyLang() {
@@ -608,8 +626,12 @@ function applyLang() {
   document.getElementById("lKeep").firstChild.textContent = t.keep + " ";
   document.getElementById("lTarget").firstChild.textContent = t.target + " ";
   document.getElementById("lMp4").firstChild.textContent = t.record + " ";
+  document.getElementById("lDuration").firstChild.textContent = t.dur + " ";
   document.getElementById("lVlmCheck").firstChild.textContent = t.vlmCheck + " ";
+  document.getElementById("lVlmModel").firstChild.textContent = t.vlmModel + " ";
+  document.getElementById("lVlmUrl").firstChild.textContent = t.vlmUrl + " ";
   document.getElementById("lJev").firstChild.textContent = t.jev + " ";
+  document.getElementById("lJevModel").firstChild.textContent = t.jevModel + " ";
   const tsel = document.getElementById("target");
   tsel.options[0].textContent = t.people;
   tsel.options[1].textContent = t.cars;
@@ -635,7 +657,10 @@ $("form").onsubmit = async (ev) => {
     target: $("target").value, headers: $("headers").value.trim() || null,
     keep_frames: Number.isFinite(keepVal) ? keepVal : 10, flow: true,
     timelapse: $("mp4").checked, timelapse_fps: parseInt($("mp4fps").value, 10) || 12,
-    vlm_check: parseFloat($("vlmcheck").value) || 0, jev_router: $("jev").checked
+    duration: parseFloat($("duration").value) || 0,
+    vlm_check: parseFloat($("vlmcheck").value) || 0, jev_router: $("jev").checked,
+    vlm_model: $("vlmmodel").value.trim(), vlm_base_url: $("vlmurl").value.trim(),
+    jev_model: $("jevmodel").value.trim()
   };
   const res = await fetch("/api/start", { method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ source: $("source").value, options }) });

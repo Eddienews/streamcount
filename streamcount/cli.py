@@ -70,6 +70,9 @@ def _add_flow_args(parser: argparse.ArgumentParser) -> None:
 def _add_output_args(parser: argparse.ArgumentParser) -> None:
     group = parser.add_argument_group("output")
     group.add_argument("--interval", type=float, default=2.0, help="seconds between sampled frames")
+    group.add_argument("--duration", type=float, default=0.0, metavar="MIN",
+                       help="close the run cleanly after N minutes (0 = until stopped; "
+                            "saves summary/chart/timelapse as usual)")
     group.add_argument("--frames", type=int, default=0,
                        help="number of frames to process (0 = 10 for streams, all for images)")
     group.add_argument("--timeline", choices=["auto", "wall", "video"], default="auto",
@@ -196,6 +199,7 @@ def main(argv: list[str] | None = None) -> int:
         flow_min_move=args.flow_min_move,
         flow_max_age=args.flow_max_age,
         vlm_check=args.vlm_check,
+        duration=args.duration,
         jev_router=args.jev_router,
         jev_key=args.jev_key,
         jev_model=args.jev_model,

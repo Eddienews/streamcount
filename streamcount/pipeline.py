@@ -67,6 +67,7 @@ class RunConfig:
     flow_min_move: float = 40.0
     flow_max_age: float = 5.0
     vlm_check: float = 0.0     # seconds between recall checks (0 = off)
+    duration: float = 0.0      # minutes; the run closes itself cleanly at the limit (0 = off)
     jev_router: bool = False   # let Jev gate each recall check (needs a TypeSafe key)
     jev_key: str | None = None
     jev_model: str = "jev-latest"
@@ -345,7 +346,8 @@ def run(config: RunConfig) -> RunResult:
         else None
     )
 
-    _log(f"[run] {run_dir.name} | source: {source[:110]}")
+    limit_note = f" | limit: {config.duration:g} min" if config.duration else ""
+    _log(f"[run] {run_dir.name} | source: {source[:110]}{limit_note}")
     header = f"{'frame':>5} {'engine':<5} {'count':>6} {'ms':>6}"
     _log(header + ("  tracks/passes" if tracker else "  notes"))
 
@@ -393,6 +395,10 @@ def run(config: RunConfig) -> RunResult:
                     break
                 if stop_file.exists():
                     _log(f"[stop] STOP file seen — closing {run_dir.name} cleanly")
+                    break
+                if config.duration and time.monotonic() - t0 >= config.duration * 60:
+                    _log(f"[stop] duration limit reached ({config.duration:g} min) — "
+                         f"closing {run_dir.name} cleanly")
                     break
                 frames_done = index
                 t_rel = (time.monotonic() - t0) if timeline_mode == "wall" else (index - 1) * config.interval
@@ -563,6 +569,9 @@ def run(config: RunConfig) -> RunResult:
             _log(f"  Jev router: {stats['escalations']}/{stats['checks']} checks escalated "
                  f"({stats['skipped']} skipped, {stats['errors']} errors, "
                  f"mean {stats.get('mean_latency_ms', 0)} ms)")
+
+        if config.duration:
+            summary.update(duration_minutes=config.duration)
 
     for name, counts in counts_by_engine.items():
         arr = [c for c in counts if c >= 0]

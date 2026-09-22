@@ -55,7 +55,8 @@ def test_detect_rejects_garbage():
 # --------------------------------------------------------------------------- #
 def test_page_has_the_essentials():
     for marker in ("passers-by", "/api/status", "/api/start", "/api/stop", "/latest.jpg",
-                   'id="keep"', 'id="mp4"', "/timelapse.mp4", 'id="vlmcheck"', 'id="jev"'):
+                   'id="keep"', 'id="mp4"', "/timelapse.mp4", 'id="vlmcheck"', 'id="jev"',
+                   'id="duration"', 'id="vlmmodel"', 'id="vlmurl"', 'id="jevmodel"'):
         assert marker in PAGE_HTML
     assert "e8a33d" in PAGE_HTML, "amber accent must survive edits"
 
@@ -156,6 +157,25 @@ def test_build_run_command_vlm_check_and_jev_router(tmp_path: Path):
     assert "--jev-router" not in build_run_command(*base, {"vlm_check": 30})
     assert "--vlm-check" not in build_run_command(*base, {"jev_router": True}), \
         "the router has nothing to gate without a cadence"
+
+
+def test_build_run_command_duration_and_models(tmp_path: Path):
+    from streamcount.webapp import build_run_command
+
+    base = ("py", tmp_path, "t", "--url", "rtsp://cam/1")
+    cmd = build_run_command(*base, {"duration": 30, "vlm_model": "google/gemini-2.5-flash-lite",
+                                    "vlm_base_url": "https://openrouter.ai/api/v1"})
+    assert cmd[cmd.index("--duration") + 1] == "30"
+    assert cmd[cmd.index("--vlm-model") + 1] == "google/gemini-2.5-flash-lite"
+    assert cmd[cmd.index("--vlm-base-url") + 1] == "https://openrouter.ai/api/v1"
+    assert "--duration" not in build_run_command(*base, {}), "0 = run until stopped"
+    assert "--vlm-model" not in build_run_command(*base, {"vlm_model": "   "})
+
+    cmd = build_run_command(*base, {"vlm_check": 20, "jev_router": True,
+                                    "jev_model": "jev-latest"})
+    assert cmd[cmd.index("--jev-model") + 1] == "jev-latest"
+    assert "--jev-model" not in build_run_command(*base, {"vlm_check": 20}), \
+        "the Jev model only matters with the router on"
 
 
 def test_latest_frame_prefers_numeric_index(tmp_path: Path):
