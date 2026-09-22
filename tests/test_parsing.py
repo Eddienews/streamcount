@@ -4,7 +4,12 @@ import numpy as np
 
 from streamcount.detector import COCO80, Detector, class_filter, resolve_classes
 from streamcount.pipeline import _default_timeline
-from streamcount.sources import extract_playlist_urls, is_youtube, parse_headers
+from streamcount.sources import (
+    default_headers,
+    extract_playlist_urls,
+    is_youtube,
+    parse_headers,
+)
 from streamcount.vlm import parse_count_response
 
 
@@ -38,6 +43,16 @@ def test_parse_headers():
 def test_parse_headers_empty():
     assert parse_headers("") == {}
     assert parse_headers("junk") == {}
+
+
+def test_default_headers_adds_earthcam_referer():
+    url = "https://videos-3.earthcam.com/fecnetwork/32781.flv/playlist.m3u8?t=a&td=1"
+    assert default_headers(url, {}) == {"Referer": "https://www.earthcam.com/"}
+    assert default_headers(url, {"referer": "https://mine/"}) == {"referer": "https://mine/"}, \
+        "an explicit referer always wins"
+    assert default_headers("https://other.example/live.m3u8", {}) == {}
+    assert default_headers(url, {"User-Agent": "Mozilla/5.0"}) == \
+        {"User-Agent": "Mozilla/5.0", "Referer": "https://www.earthcam.com/"}
 
 
 def test_is_youtube():

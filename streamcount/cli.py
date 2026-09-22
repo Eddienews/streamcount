@@ -71,6 +71,10 @@ def _add_output_args(parser: argparse.ArgumentParser) -> None:
     group.add_argument("--keep-frames", type=int, default=0, metavar="N",
                        help="keep only the last N annotated frames on disk (0 = keep all; "
                             "with --annotate; the dashboard uses 10)")
+    group.add_argument("--timelapse", action="store_true",
+                       help="write an annotated timelapse MP4 of the run (into the run folder)")
+    group.add_argument("--timelapse-fps", type=float, default=12.0,
+                       help="timelapse playback fps (default 12 = 24x at --interval 2)")
     group.add_argument("--tag", default="", help="suffix for the run folder name")
 
 
@@ -187,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=args.out,
         annotate=args.annotate,
         keep_frames=args.keep_frames,
+        timelapse=args.timelapse,
+        timelapse_fps=args.timelapse_fps,
         tag=args.tag,
     )
     result = run(config)

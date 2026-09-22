@@ -59,8 +59,8 @@ The default model (YOLOv8n-pose ONNX, 13 MB) downloads automatically on first ru
 
 ```bash
 # A public night-street webcam, local detector, 30 frames every 2 s, annotated output
+# (EarthCam needs a Referer — it is added automatically; --headers overrides)
 streamcount run --url "https://videos-3.earthcam.com/fecnetwork/4280.flv/playlist.m3u8?t=..." \
-    --headers "Referer=https://www.earthcam.com/" \
     --engine yolo --tiles 2 --interval 2 --frames 30 --annotate
 
 # YouTube live stream, vision LLM, one frame every 5 s
@@ -112,7 +112,9 @@ is a **live session**: it stops when you press *stop*, not after the CLI default
 Everything stays on your machine (bound to `127.0.0.1`; no data leaves it, keys included).
 Dashboard runs keep only the **last 10 annotated frames** on disk (`--keep-frames`, editable
 under *options*) — a multi-hour session would otherwise write ~320 MB/h of JPEGs, and the page
-only ever needs the newest one.
+only ever needs the newest one. Tick *record mp4* and the run writes an annotated
+`timelapse.mp4` while it counts (the page links it as ▶ when available) — a compact video of
+the session that does not depend on the JPEGs staying on disk.
 
 Outputs (one folder per run):
 
@@ -121,6 +123,7 @@ Outputs (one folder per run):
 | `frames.csv` | one row per sampled frame per engine: count, latency, active tracks, passes total |
 | `events.csv` | flow mode: one row per person counted (`t`, `id`, `hits`, `displacement`, running total) |
 | `frames/*.jpg` | annotated frames (`--annotate`; cap the disk with `--keep-frames N`): boxes, track ids, running total |
+| `timelapse.mp4` | annotated timelapse video of the run (`--timelapse`; `--timelapse-fps` sets playback speed) |
 | `summary.json` | machine-readable summary, including recall correction when `--vlm-check` is used |
 
 ## Flow mode — "who passed", not "how many are on screen"

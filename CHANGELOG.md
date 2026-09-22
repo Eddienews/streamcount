@@ -10,8 +10,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
   ~320 MB/h of JPEGs while the dashboard only ever shows the newest one; the last N frames are
   kept instead (`0` = keep every frame, the CLI default). Dashboard runs pass `--keep-frames 10`
   (editable under *options*); `summary.json` records `keep_frames` when set.
+- `run --timelapse` (`--timelapse-fps`, default 12): the run writes an annotated **timelapse MP4**
+  while it is going (ffmpeg image2pipe → `timelapse.mp4` in the run folder, finalized when the run
+  stops). Works together with `--keep-frames` — the video does not depend on the JPEGs. The
+  dashboard exposes it as a *record mp4* option and links the file on the page.
 
 ### Fixed
+- **EarthCam links now work without a manual `Referer`**: the HLS CDN answers 403 without one
+  (token or not), so the pipeline adds `Referer=https://www.earthcam.com/` automatically when the
+  user set none — explicit `--headers` always wins.
 - The dashboard's `/latest.jpg` picked the newest frame with a plain name sort, which puts
   `f10000` *before* `f9999` — past 9,999 frames (~5.5 h at 2 s) the page could serve a stale
   frame. The numeric frame index now decides.

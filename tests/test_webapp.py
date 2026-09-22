@@ -55,7 +55,7 @@ def test_detect_rejects_garbage():
 # --------------------------------------------------------------------------- #
 def test_page_has_the_essentials():
     for marker in ("passers-by", "/api/status", "/api/start", "/api/stop", "/latest.jpg",
-                   'id="keep"'):
+                   'id="keep"', 'id="mp4"', "/timelapse.mp4"):
         assert marker in PAGE_HTML
     assert "e8a33d" in PAGE_HTML, "amber accent must survive edits"
 
@@ -127,6 +127,16 @@ def test_build_run_command_caps_annotated_frames(tmp_path: Path):
     cmd = build_run_command("py", tmp_path, "t", "--url", "rtsp://cam/1",
                             {"keep_frames": 0})
     assert cmd[cmd.index("--keep-frames") + 1] == "0", "0 = keep every frame"
+
+
+def test_build_run_command_timelapse_option(tmp_path: Path):
+    from streamcount.webapp import build_run_command
+
+    base = ("py", tmp_path, "t", "--url", "rtsp://cam/1")
+    cmd = build_run_command(*base, {"timelapse": True, "timelapse_fps": 8})
+    assert "--timelapse" in cmd
+    assert cmd[cmd.index("--timelapse-fps") + 1] == "8"
+    assert "--timelapse" not in build_run_command(*base, {}), "off by default"
 
 
 def test_latest_frame_prefers_numeric_index(tmp_path: Path):
@@ -227,6 +237,12 @@ def test_stop_route(dashboard):
 def test_latest_frame_route_without_run(dashboard):
     base, _ = dashboard
     status, body = _get(base + "/latest.jpg")
+    assert status == 204 and body == b""
+
+
+def test_timelapse_route_without_run(dashboard):
+    base, _ = dashboard
+    status, body = _get(base + "/timelapse.mp4")
     assert status == 204 and body == b""
 
 

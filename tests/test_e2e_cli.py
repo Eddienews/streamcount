@@ -50,7 +50,7 @@ def test_cli_flow_run_end_to_end(synthetic_video: Path, tmp_path: Path) -> None:
     out = tmp_path / "runs"
     result = _cli(
         ["run", "--video", str(synthetic_video), "--frames", "3", "--interval", "1",
-         "--flow", "--annotate", "--keep-frames", "2", "--out", str(out)],
+         "--flow", "--annotate", "--keep-frames", "2", "--timelapse", "--out", str(out)],
         cwd=tmp_path,
     )
     assert result.returncode == 0, result.stderr
@@ -67,6 +67,14 @@ def test_cli_flow_run_end_to_end(synthetic_video: Path, tmp_path: Path) -> None:
     assert summary["flow"] is True
     assert (run_dir / "events.csv").exists()
     assert (run_dir / "chart.png").exists(), "flow runs must generate a chart"
+    assert (run_dir / "timelapse.mp4").exists(), "--timelapse must write an MP4"
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(run_dir / "timelapse.mp4")],
+        capture_output=True, text=True,
+    )
+    assert float(probe.stdout.strip()) > 0, "the timelapse must have a positive duration"
+
     kept = sorted(p.name for p in (run_dir / "frames").glob("*.jpg"))
     assert kept == ["f0002_flow.jpg", "f0003_flow.jpg"], \
         "--keep-frames 2 must leave only the newest annotated frames on disk"

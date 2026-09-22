@@ -1,10 +1,15 @@
-"""Run pipeline: frames in -> counts out (CSV + events + annotated frames + summary)."""
+"""Run pipeline: frames in -> counts out (CSV + events + annotated frames + summary).
+
+Optionally writes an annotated timelapse MP4 of the run as it goes (`--timelapse`).
+"""
 
 from __future__ import annotations
 
 import csv
+import io
 import json
 import re
+import subprocess
 import sys
 import time
 from collections.abc import Iterator
@@ -16,6 +21,7 @@ from PIL import Image, ImageDraw
 
 from .detector import VEHICLE_CLASSES, Detector, resolve_classes
 from .sources import (
+    default_headers,
     frames_from_ffmpeg,
     frames_from_images,
     parse_headers,
@@ -64,6 +70,8 @@ class RunConfig:
     out_dir: Path = Path("runs")
     annotate: bool = False
     keep_frames: int = 0       # keep only the last N annotated frames on disk (0 = keep all)
+    timelapse: bool = False    # write an annotated timelapse MP4 of the run (run_dir/timelapse.mp4)
+    timelapse_fps: float = 12.0
     tag: str = ""
 
 
@@ -139,6 +147,78 @@ def prune_frames(directory: Path, keep: int) -> int:
     return removed
 
 
+class _Recorder:
+    """Writes annotated frames into an MP4 while a run is going (ffmpeg image2pipe).
+
+    Lazy: ffmpeg starts on the first frame, so a run that gets none leaves no broken file.
+    A recorder that dies mid-run disables itself instead of taking the counting run down.
+    """
+
+    def __init__(self, path: Path, fps: float) -> None:
+        self.path = Path(path)
+        self.fps = fps
+        self.frames = 0
+        self._proc: subprocess.Popen | None = None
+        self._buffer = io.BytesIO()
+        self._dead = False
+
+    def _start(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        cmd = [
+            "ffmpeg", "-hide_banner", "-v", "error", "-y",
+            "-f", "image2pipe", "-c:v", "mjpeg", "-framerate", f"{self.fps:g}", "-i", "-",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(self.path),
+        ]
+        try:
+            self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                                          stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        except FileNotFoundError as exc:
+            raise SystemExit("--timelapse needs ffmpeg on PATH") from exc
+
+    def write(self, image: Image.Image) -> None:
+        if self._dead:
+            return
+        if self._proc is None:
+            self._start()
+        self._buffer.seek(0)
+        self._buffer.truncate()
+        image.convert("RGB").save(self._buffer, "JPEG", quality=85)
+        try:
+            self._proc.stdin.write(self._buffer.getvalue())  # type: ignore[union-attr]
+            self._proc.stdin.flush()  # type: ignore[union-attr]
+        except OSError:  # encoder died (bad path, disk): warn once, keep counting
+            _log(f"[warn] timelapse encoder died: {self._error_tail()}")
+            self._dead = True
+            self._proc = None
+            return
+        self.frames += 1
+
+    def _error_tail(self) -> str:
+        if self._proc is None:
+            return "no process"
+        try:
+            _, err = self._proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+            return "timed out"
+        return (err or b"").decode("utf-8", "replace").strip()[:200] or "no stderr"
+
+    def close(self) -> None:
+        if self._proc is None:
+            return
+        try:
+            self._proc.stdin.close()  # type: ignore[union-attr]
+            _, err = self._proc.communicate(timeout=120)
+        except (OSError, subprocess.TimeoutExpired):
+            self._proc.kill()
+            return
+        if self._proc.returncode != 0:
+            _log(f"[warn] timelapse encoder exited {self._proc.returncode}: "
+                 f"{(err or b'').decode('utf-8', 'replace').strip()[:200]}")
+        self._proc = None
+
+
 def _default_timeline(source: str) -> str:
     lowered = source.lower()
     if ".m3u8" in lowered or lowered.startswith(("rtsp://", "rtmp://")):
@@ -170,6 +250,12 @@ def run(config: RunConfig) -> RunResult:
     timeline_mode = config.timeline
     if timeline_mode == "auto":
         timeline_mode = "video" if (config.image or config.images_dir) else _default_timeline(source)
+
+    # webcam CDNs that gate on headers: add the one they require when the user gave none
+    resolved = default_headers(source, headers)
+    if resolved != headers:
+        _log("[info] EarthCam source: Referer header added automatically (--headers overrides)")
+    headers = resolved
 
     # ----------------------------------------------------------------- engines
     detector = None
@@ -214,6 +300,10 @@ def run(config: RunConfig) -> RunResult:
     annotate_dir = run_dir / "frames" if config.annotate else None
     if annotate_dir:
         annotate_dir.mkdir(parents=True, exist_ok=True)
+    recorder = _Recorder(run_dir / "timelapse.mp4", config.timelapse_fps) \
+        if config.timelapse else None
+    # in "both" mode the video records the detector's frames (one annotated pass per frame)
+    record_engine = "yolo" if detector is not None else "vlm"
 
     tracker = (
         FlowTracker(
@@ -300,15 +390,18 @@ def run(config: RunConfig) -> RunResult:
                          len(detections), ms, source, len(active), tracker.total, vlm_count, ""]
                     )
                     frames_csv.flush()
-                    if annotate_dir:
+                    if annotate_dir or recorder:
                         flow_boxes = [(tr["box"][0], tr["box"][1], tr["box"][2], tr["box"][3])
                                       for tr in active]
-                        _annotate(image, flow_boxes, len(active),
-                                  f"flow passes={tracker.total}",
-                                  ids=[tr["id"] for tr in active]).save(
-                            annotate_dir / f"f{index:04d}_flow.jpg", quality=88)
-                        if config.keep_frames:
-                            prune_frames(annotate_dir, config.keep_frames)
+                        canvas = _annotate(image, flow_boxes, len(active),
+                                           f"flow passes={tracker.total}",
+                                           ids=[tr["id"] for tr in active])
+                        if annotate_dir:
+                            canvas.save(annotate_dir / f"f{index:04d}_flow.jpg", quality=88)
+                            if config.keep_frames:
+                                prune_frames(annotate_dir, config.keep_frames)
+                        if recorder:
+                            recorder.write(canvas)
                     continue
 
                 for name in (["yolo"] if detector else []) + (["vlm"] if vlm else []):
@@ -330,14 +423,19 @@ def run(config: RunConfig) -> RunResult:
                          source, "", "", "", notes]
                     )
                     frames_csv.flush()
-                    if annotate_dir:
-                        _annotate(image, boxes, count, name).save(
-                            annotate_dir / f"f{index:04d}_{name}.jpg", quality=88)
-                        if config.keep_frames:
-                            prune_frames(annotate_dir, config.keep_frames)
+                    if annotate_dir or (recorder and name == record_engine):
+                        canvas = _annotate(image, boxes, count, name)
+                        if annotate_dir:
+                            canvas.save(annotate_dir / f"f{index:04d}_{name}.jpg", quality=88)
+                            if config.keep_frames:
+                                prune_frames(annotate_dir, config.keep_frames)
+                        if recorder and name == record_engine:
+                            recorder.write(canvas)
     finally:
         if events_handle:
             events_handle.close()
+        if recorder:
+            recorder.close()
 
     # ------------------------------------------------------------------ summary
     _log("\n--- summary ---")
@@ -351,6 +449,9 @@ def run(config: RunConfig) -> RunResult:
     }
     if config.keep_frames:
         summary["keep_frames"] = config.keep_frames
+    if recorder is not None and recorder.frames:
+        summary.update(timelapse=str(recorder.path), timelapse_frames=recorder.frames,
+                       timelapse_fps=recorder.fps)
     if tracker is not None:
         tracker.finalize(t_rel)
         duration_s = max(config.interval, t_rel)
@@ -399,6 +500,8 @@ def run(config: RunConfig) -> RunResult:
 
     summary_path = run_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    if recorder is not None and recorder.frames:
+        _log(f"timelapse: {recorder.path} ({recorder.frames} frames @ {recorder.fps:g} fps)")
     _log(f"CSV: {csv_path}")
     if events_path:
         _log(f"events: {events_path}")

@@ -17,7 +17,7 @@ Requirements: Python 3.10+, `ffmpeg` on PATH. Add `yt-dlp` for YouTube sources.
 ## 1. Automated suite (offline, ~15 s)
 
 ```bash
-pytest -m "not e2e"     # [64 passed]
+pytest -m "not e2e"     # [67 passed]
 pytest -m e2e           # [4 passed] needs ffmpeg; downloads the default model once
 ```
 
@@ -37,8 +37,9 @@ prototype produced, twice.]
 
 ```bash
 streamcount find-stream "https://www.earthcam.com/usa/louisiana/neworleans/bourbonstreet/"
-streamcount run --url "<url printed above>" --headers "Referer=https://www.earthcam.com/" \
+streamcount run --url "<url printed above>" \
     --engine yolo --tiles 2 --flow --interval 2 --frames 75
+# (EarthCam's required Referer header is added automatically; --headers overrides)
 ```
 
 [Expect: a frame every 2 s, counts fluctuating with street traffic, `passes` climbing.]
@@ -94,7 +95,8 @@ log tail. *stop* ends the run. The run is written to `runs/web/<run_dir>` like a
 
 [Expect: numbers climbing within ~15 s; a frame with red boxes and `id…` labels. After a few
 minutes, `runs/web/<run_dir>/frames/` holds 10 JPEGs, not hundreds — dashboard runs keep only
-the last 10 annotated frames (`--keep-frames`).]
+the last 10 annotated frames (`--keep-frames`). Tick *record mp4* before pressing count to get
+an annotated `timelapse.mp4` in the run folder; the page shows a ▶ link once it exists.]
 
 ## How to judge the result
 

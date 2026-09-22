@@ -36,6 +36,19 @@ def parse_headers(spec: str) -> dict[str, str]:
     return headers
 
 
+def default_headers(source: str, headers: dict[str, str] | None = None) -> dict[str, str]:
+    """Headers for a source, adding defaults the site requires when the user gave none.
+
+    EarthCam's HLS CDN answers 403 without a Referer from the site (token or not), so a
+    pasted EarthCam link works out of the box. An explicit Referer always wins.
+    """
+    merged = dict(headers or {})
+    if "earthcam.com" in (source or "").lower() and \
+            not any(key.lower() == "referer" for key in merged):
+        merged["Referer"] = "https://www.earthcam.com/"
+    return merged
+
+
 def is_youtube(url: str) -> bool:
     return bool(re.match(r"^https?://(www\.|m\.|music\.)?(youtube\.com|youtu\.be)/", url or ""))
 

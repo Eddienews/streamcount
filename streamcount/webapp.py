@@ -63,6 +63,9 @@ def build_run_command(python: str, runs_root: Path, tag: str, source_flag: str,
     # otherwise write ~320 MB/h of annotated JPEGs). 0 = keep every frame.
     keep = options.get("keep_frames", 10)
     cmd += ["--keep-frames", str(max(0, 10 if keep is None else int(keep)))]
+    if options.get("timelapse"):
+        fps = float(options.get("timelapse_fps") or 12)
+        cmd += ["--timelapse", "--timelapse-fps", f"{max(fps, 1):g}"]
     interval = float(options.get("interval") or 2.0)
     cmd += ["--interval", f"{max(interval, 1.0):g}"]
     tiles = int(options.get("tiles") or 2)
@@ -227,7 +230,7 @@ class Supervisor:
                 "frames": 0, "count": 0, "active": 0, "passes": 0, "latency_ms": 0,
                 "vlm_count": None, "per_minute": [], "last_events": [], "log_tail": [],
                 "run_dir": str(run_dir) if run_dir else None,
-                "finished": False,
+                "finished": False, "timelapse": False,
             }
             if run_dir:
                 payload.update(self._tail_frames(run_dir / "frames.csv"))
@@ -235,6 +238,7 @@ class Supervisor:
                 payload["per_minute"] = self.passers_per_minute(times)
                 payload["last_events"] = events[-6:][::-1]
                 payload["finished"] = (run_dir / "summary.json").exists()
+                payload["timelapse"] = (run_dir / "timelapse.mp4").exists()
             if self._log_path and self._log_path.exists():
                 try:
                     tail = self._log_path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -311,6 +315,14 @@ def make_handler(supervisor: Supervisor) -> type[BaseHTTPRequestHandler]:
                     self._send(204, b"", "image/jpeg")
                     return
                 self._send(200, frame.read_bytes(), "image/jpeg")
+                return
+            if route == "/timelapse.mp4":
+                run_dir = supervisor._find_run_dir()  # noqa: SLF001 - same module
+                video = run_dir / "timelapse.mp4" if run_dir else None
+                if video is None or not video.exists():
+                    self._send(204, b"", "video/mp4")
+                    return
+                self._send(200, video.read_bytes(), "video/mp4")
                 return
             self._error(404, "not found")
 
@@ -460,6 +472,7 @@ PAGE_HTML = """<!doctype html>
   }
   .opt input.wide { width: 260px; }
   .opt select { width: auto; }
+  .opt input[type=checkbox] { width: auto; border: 0; accent-color: var(--amber); vertical-align: -1px; }
 
   .numbers { display: flex; gap: 56px; flex-wrap: wrap; margin-bottom: 8px; }
   .num .label { font: 11px/1 -apple-system, Segoe UI, sans-serif; letter-spacing: .18em;
@@ -512,6 +525,7 @@ PAGE_HTML = """<!doctype html>
         </label>
         <label class="opt">confiança <input type="number" id="conf" value="0.25" min="0.05" max="0.9" step="0.05"></label>
         <label class="opt" id="lKeep">guardar frames <input type="number" id="keep" value="10" min="0" max="999" step="1"></label>
+        <label class="opt" id="lMp4">gravar mp4 <input type="checkbox" id="mp4"> <input type="number" id="mp4fps" value="12" min="1" max="60" step="1"></label>
         <label class="opt">alvo
           <select id="target"><option value="people">pessoas</option><option value="cars">carros</option></select>
         </label>
@@ -531,6 +545,7 @@ PAGE_HTML = """<!doctype html>
   <img id="frame" alt="">
   <canvas id="chart" width="880" height="90"></canvas>
   <div class="chartlabel" id="lPerMinute">passagens por minuto</div>
+  <div class="chartlabel" id="mp4box" style="display:none"><a href="/timelapse.mp4" target="_blank" style="color: var(--amber); text-decoration: none;">&#9654; timelapse.mp4</a></div>
 
   <h2 id="lLast">últimas passagens</h2>
   <table><tbody id="events"><tr><td class="dim">—</td></tr></tbody></table>
@@ -543,12 +558,12 @@ const T = {
         go:"contar →", stop:"parar", adv:"ajustes", passes:"passers-by", now:"na cena agora",
         active:"em movimento", rate:"ritmo", perMinute:"passagens por minuto",
         last:"últimas passagens", idle:"sem contagem ativa", frames:"frames",
-        interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames" },
+        interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames", record:"gravar mp4" },
   en: { stopped:"idle", live:"counting", hint:"Paste a live stream or recording link",
         go:"count →", stop:"stop", adv:"options", passes:"passers-by", now:"in scene now",
         active:"moving", rate:"rate", perMinute:"passes per minute",
         last:"latest passes", idle:"no active run", frames:"frames",
-        interval:"interval", engine:"engine", of:"of", keep:"keep frames" }
+        interval:"interval", engine:"engine", of:"of", keep:"keep frames", record:"record mp4" }
 };
 let lang = localStorage.getItem("sc-lang") || "en";
 function applyLang() {
@@ -567,6 +582,7 @@ function applyLang() {
   document.getElementById("lLast").textContent = t.last;
   document.querySelectorAll("label.opt")[0].firstChild.textContent = t.interval + " (s) ";
   document.getElementById("lKeep").firstChild.textContent = t.keep + " ";
+  document.getElementById("lMp4").firstChild.textContent = t.record + " ";
 }
 document.getElementById("lang").onclick = () => {
   lang = lang === "pt" ? "en" : "pt"; localStorage.setItem("sc-lang", lang); applyLang();
@@ -587,7 +603,8 @@ $("form").onsubmit = async (ev) => {
     tiles: parseInt($("tiles").value || "2", 10),
     engine: $("engine").value, conf: parseFloat($("conf").value || "0.25"),
     target: $("target").value, headers: $("headers").value.trim() || null,
-    keep_frames: Number.isFinite(keepVal) ? keepVal : 10, flow: true
+    keep_frames: Number.isFinite(keepVal) ? keepVal : 10, flow: true,
+    timelapse: $("mp4").checked, timelapse_fps: parseInt($("mp4fps").value, 10) || 12
   };
   const res = await fetch("/api/start", { method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ source: $("source").value, options }) });
@@ -646,6 +663,7 @@ async function tick() {
       img.style.display = "block";
       img.src = "/latest.jpg?t=" + Date.now();
     }
+    $("mp4box").style.display = s.timelapse ? "block" : "none";
     $("log").textContent = (s.log_tail || []).slice(-6).join("\\n");
   } catch (e) { /* servidor fora: tenta de novo no próximo tick */ }
 }
