@@ -68,6 +68,9 @@ def _add_output_args(parser: argparse.ArgumentParser) -> None:
                        help="time base for events: wall clock (live streams) or video time (recordings)")
     group.add_argument("--out", type=Path, default=Path("runs"), help="output directory")
     group.add_argument("--annotate", action="store_true", help="save annotated frames")
+    group.add_argument("--keep-frames", type=int, default=0, metavar="N",
+                       help="keep only the last N annotated frames on disk (0 = keep all; "
+                            "with --annotate; the dashboard uses 10)")
     group.add_argument("--tag", default="", help="suffix for the run folder name")
 
 
@@ -183,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         vlm_check=args.vlm_check,
         out_dir=args.out,
         annotate=args.annotate,
+        keep_frames=args.keep_frames,
         tag=args.tag,
     )
     result = run(config)

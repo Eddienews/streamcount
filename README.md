@@ -110,6 +110,9 @@ streamcount serve --port 8766 --open      # opens http://127.0.0.1:8766 in your 
 It is a thin supervisor over `streamcount run` — same engines, same options, one page. The run
 is a **live session**: it stops when you press *stop*, not after the CLI default of 10 frames.
 Everything stays on your machine (bound to `127.0.0.1`; no data leaves it, keys included).
+Dashboard runs keep only the **last 10 annotated frames** on disk (`--keep-frames`, editable
+under *options*) — a multi-hour session would otherwise write ~320 MB/h of JPEGs, and the page
+only ever needs the newest one.
 
 Outputs (one folder per run):
 
@@ -117,7 +120,7 @@ Outputs (one folder per run):
 |---|---|
 | `frames.csv` | one row per sampled frame per engine: count, latency, active tracks, passes total |
 | `events.csv` | flow mode: one row per person counted (`t`, `id`, `hits`, `displacement`, running total) |
-| `frames/*.jpg` | annotated frames (`--annotate`): boxes, track ids, running total |
+| `frames/*.jpg` | annotated frames (`--annotate`; cap the disk with `--keep-frames N`): boxes, track ids, running total |
 | `summary.json` | machine-readable summary, including recall correction when `--vlm-check` is used |
 
 ## Flow mode — "who passed", not "how many are on screen"

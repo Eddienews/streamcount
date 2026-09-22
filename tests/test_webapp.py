@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from streamcount.webapp import PAGE_HTML, Supervisor, detect_source, make_handler
+from streamcount.webapp import PAGE_HTML, Supervisor, detect_source, latest_frame, make_handler
 
 
 # --------------------------------------------------------------------------- #
@@ -54,7 +54,8 @@ def test_detect_rejects_garbage():
 # Page + supervisor internals
 # --------------------------------------------------------------------------- #
 def test_page_has_the_essentials():
-    for marker in ("passers-by", "/api/status", "/api/start", "/api/stop", "/latest.jpg"):
+    for marker in ("passers-by", "/api/status", "/api/start", "/api/stop", "/latest.jpg",
+                   'id="keep"'):
         assert marker in PAGE_HTML
     assert "e8a33d" in PAGE_HTML, "amber accent must survive edits"
 
@@ -111,6 +112,32 @@ def test_build_run_command_respects_explicit_frames(tmp_path: Path):
     assert "--tiles" not in cmd, "tiles=1 means off"
     assert cmd[cmd.index("--interval") + 1] == "1", "interval is clamped to >= 1 s"
     assert cmd[cmd.index("--engine") + 1] == "yolo"
+
+
+def test_build_run_command_caps_annotated_frames(tmp_path: Path):
+    from streamcount.webapp import build_run_command
+
+    cmd = build_run_command("py", tmp_path, "t", "--url", "rtsp://cam/1", {})
+    assert cmd[cmd.index("--keep-frames") + 1] == "10", "dashboard default: last 10 frames"
+
+    cmd = build_run_command("py", tmp_path, "t", "--url", "rtsp://cam/1",
+                            {"keep_frames": None})
+    assert cmd[cmd.index("--keep-frames") + 1] == "10", "null option falls back to the default"
+
+    cmd = build_run_command("py", tmp_path, "t", "--url", "rtsp://cam/1",
+                            {"keep_frames": 0})
+    assert cmd[cmd.index("--keep-frames") + 1] == "0", "0 = keep every frame"
+
+
+def test_latest_frame_prefers_numeric_index(tmp_path: Path):
+    """f10000 sorts before f9999 as text — the pick must use the numeric frame index."""
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert latest_frame(empty) is None
+
+    for name in ("f9999_flow.jpg", "f0001_flow.jpg", "f10000_vlm.jpg", "notes.txt"):
+        (tmp_path / name).write_bytes(b"x")
+    assert latest_frame(tmp_path).name == "f10000_vlm.jpg"
 
 
 # --------------------------------------------------------------------------- #

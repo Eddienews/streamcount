@@ -59,6 +59,10 @@ def build_run_command(python: str, runs_root: Path, tag: str, source_flag: str,
     """Build the `streamcount run` argv for a dashboard run (pure, unit-testable)."""
     cmd = [python, "-m", "streamcount", "run", source_flag, source_arg,
            "--out", str(runs_root), "--tag", tag, "--annotate"]
+    # a dashboard run only ever shows the newest frame; cap the rest (a live session would
+    # otherwise write ~320 MB/h of annotated JPEGs). 0 = keep every frame.
+    keep = options.get("keep_frames", 10)
+    cmd += ["--keep-frames", str(max(0, 10 if keep is None else int(keep)))]
     interval = float(options.get("interval") or 2.0)
     cmd += ["--interval", f"{max(interval, 1.0):g}"]
     tiles = int(options.get("tiles") or 2)
@@ -240,6 +244,21 @@ class Supervisor:
             return payload
 
 
+def latest_frame(frames_dir: Path) -> Path | None:
+    """Newest annotated frame in a run's frames/ dir (numeric index, not name order)."""
+    from .pipeline import frame_index  # lazy: keep the web server's import list light
+
+    frames = [p for p in frames_dir.iterdir() if p.suffix == ".jpg"]
+    if not frames:
+        return None
+
+    def sort_key(path: Path) -> tuple[int, str]:
+        index = frame_index(path)
+        return (index if index is not None else -1, path.name)
+
+    return max(frames, key=sort_key)
+
+
 # --------------------------------------------------------------------------- #
 # HTTP layer
 # --------------------------------------------------------------------------- #
@@ -287,11 +306,7 @@ def make_handler(supervisor: Supervisor) -> type[BaseHTTPRequestHandler]:
                 run_dir = supervisor._find_run_dir()  # noqa: SLF001 - same module
                 frame = None
                 if run_dir and (run_dir / "frames").exists():
-                    frames = sorted(
-                        (p for p in (run_dir / "frames").iterdir() if p.suffix == ".jpg"),
-                        key=lambda p: p.name,
-                    )
-                    frame = frames[-1] if frames else None
+                    frame = latest_frame(run_dir / "frames")
                 if frame is None:
                     self._send(204, b"", "image/jpeg")
                     return
@@ -496,6 +511,7 @@ PAGE_HTML = """<!doctype html>
           <select id="engine"><option value="yolo">yolo (local)</option><option value="vlm">vlm (API)</option><option value="both">both</option></select>
         </label>
         <label class="opt">confiança <input type="number" id="conf" value="0.25" min="0.05" max="0.9" step="0.05"></label>
+        <label class="opt" id="lKeep">guardar frames <input type="number" id="keep" value="10" min="0" max="999" step="1"></label>
         <label class="opt">alvo
           <select id="target"><option value="people">pessoas</option><option value="cars">carros</option></select>
         </label>
@@ -527,12 +543,12 @@ const T = {
         go:"contar →", stop:"parar", adv:"ajustes", passes:"passers-by", now:"na cena agora",
         active:"em movimento", rate:"ritmo", perMinute:"passagens por minuto",
         last:"últimas passagens", idle:"sem contagem ativa", frames:"frames",
-        interval:"intervalo", engine:"motor", of:"de" },
+        interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames" },
   en: { stopped:"idle", live:"counting", hint:"Paste a live stream or recording link",
         go:"count →", stop:"stop", adv:"options", passes:"passers-by", now:"in scene now",
         active:"moving", rate:"rate", perMinute:"passes per minute",
         last:"latest passes", idle:"no active run", frames:"frames",
-        interval:"interval", engine:"engine", of:"of" }
+        interval:"interval", engine:"engine", of:"of", keep:"keep frames" }
 };
 let lang = localStorage.getItem("sc-lang") || "en";
 function applyLang() {
@@ -550,6 +566,7 @@ function applyLang() {
   document.getElementById("lPerMinute").textContent = t.perMinute;
   document.getElementById("lLast").textContent = t.last;
   document.querySelectorAll("label.opt")[0].firstChild.textContent = t.interval + " (s) ";
+  document.getElementById("lKeep").firstChild.textContent = t.keep + " ";
 }
 document.getElementById("lang").onclick = () => {
   lang = lang === "pt" ? "en" : "pt"; localStorage.setItem("sc-lang", lang); applyLang();
@@ -564,12 +581,13 @@ function showError(msg) {
 
 $("form").onsubmit = async (ev) => {
   ev.preventDefault(); showError("");
+  const keepVal = parseInt($("keep").value, 10);
   const options = {
     interval: parseFloat($("interval").value || "2"),
     tiles: parseInt($("tiles").value || "2", 10),
     engine: $("engine").value, conf: parseFloat($("conf").value || "0.25"),
     target: $("target").value, headers: $("headers").value.trim() || null,
-    flow: true
+    keep_frames: Number.isFinite(keepVal) ? keepVal : 10, flow: true
   };
   const res = await fetch("/api/start", { method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ source: $("source").value, options }) });

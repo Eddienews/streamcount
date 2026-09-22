@@ -50,7 +50,7 @@ def test_cli_flow_run_end_to_end(synthetic_video: Path, tmp_path: Path) -> None:
     out = tmp_path / "runs"
     result = _cli(
         ["run", "--video", str(synthetic_video), "--frames", "3", "--interval", "1",
-         "--flow", "--annotate", "--out", str(out)],
+         "--flow", "--annotate", "--keep-frames", "2", "--out", str(out)],
         cwd=tmp_path,
     )
     assert result.returncode == 0, result.stderr
@@ -67,7 +67,9 @@ def test_cli_flow_run_end_to_end(synthetic_video: Path, tmp_path: Path) -> None:
     assert summary["flow"] is True
     assert (run_dir / "events.csv").exists()
     assert (run_dir / "chart.png").exists(), "flow runs must generate a chart"
-    assert list((run_dir / "frames").glob("*.jpg")), "annotated frames expected"
+    kept = sorted(p.name for p in (run_dir / "frames").glob("*.jpg"))
+    assert kept == ["f0002_flow.jpg", "f0003_flow.jpg"], \
+        "--keep-frames 2 must leave only the newest annotated frames on disk"
 
 
 def test_cli_report_on_finished_run(synthetic_video: Path, tmp_path: Path) -> None:

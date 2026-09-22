@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import sys
 import time
 from collections.abc import Iterator
@@ -62,6 +63,7 @@ class RunConfig:
     # output
     out_dir: Path = Path("runs")
     annotate: bool = False
+    keep_frames: int = 0       # keep only the last N annotated frames on disk (0 = keep all)
     tag: str = ""
 
 
@@ -98,6 +100,43 @@ def _annotate(image: Image.Image, boxes, count: int, engine: str, ids=None) -> I
     draw.rectangle([0, 0, 8 + 7 * len(stamp), 20], fill=(0, 0, 0))
     draw.text((4, 5), stamp, fill=(255, 210, 60))
     return canvas
+
+
+_FRAME_NAME_RE = re.compile(r"^f(\d+)_")
+
+
+def frame_index(path: Path) -> int | None:
+    """Numeric index of an annotated frame (`f0007_flow.jpg` -> 7); None if not ours."""
+    match = _FRAME_NAME_RE.match(path.name)
+    return int(match.group(1)) if match else None
+
+
+def prune_frames(directory: Path, keep: int) -> int:
+    """Delete all but the last `keep` annotated frames (by frame index); return files deleted.
+
+    Frame numbers are zero-padded, but a plain name sort breaks at f10000 (it sorts *before*
+    f9999), so retention compares the parsed integer index. Files we did not name are left
+    alone, and a file a reader still holds open is retried on the next frame.
+    """
+    if keep <= 0:
+        return 0
+    by_index: dict[int, list[Path]] = {}
+    for path in directory.iterdir():
+        index = frame_index(path)
+        if index is not None:
+            by_index.setdefault(index, []).append(path)
+    kept = set(sorted(by_index)[-keep:])
+    removed = 0
+    for index, paths in by_index.items():
+        if index in kept:
+            continue
+        for path in paths:
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:  # e.g. the dashboard is reading it right now
+                pass
+    return removed
 
 
 def _default_timeline(source: str) -> str:
@@ -268,6 +307,8 @@ def run(config: RunConfig) -> RunResult:
                                   f"flow passes={tracker.total}",
                                   ids=[tr["id"] for tr in active]).save(
                             annotate_dir / f"f{index:04d}_flow.jpg", quality=88)
+                        if config.keep_frames:
+                            prune_frames(annotate_dir, config.keep_frames)
                     continue
 
                 for name in (["yolo"] if detector else []) + (["vlm"] if vlm else []):
@@ -292,6 +333,8 @@ def run(config: RunConfig) -> RunResult:
                     if annotate_dir:
                         _annotate(image, boxes, count, name).save(
                             annotate_dir / f"f{index:04d}_{name}.jpg", quality=88)
+                        if config.keep_frames:
+                            prune_frames(annotate_dir, config.keep_frames)
     finally:
         if events_handle:
             events_handle.close()
@@ -306,6 +349,8 @@ def run(config: RunConfig) -> RunResult:
         "frames": frames_done,
         "run_dir": str(run_dir),
     }
+    if config.keep_frames:
+        summary["keep_frames"] = config.keep_frames
     if tracker is not None:
         tracker.finalize(t_rel)
         duration_s = max(config.interval, t_rel)

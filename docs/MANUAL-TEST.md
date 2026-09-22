@@ -17,8 +17,8 @@ Requirements: Python 3.10+, `ffmpeg` on PATH. Add `yt-dlp` for YouTube sources.
 ## 1. Automated suite (offline, ~15 s)
 
 ```bash
-pytest -m "not e2e"     # [35 passed]
-pytest -m e2e           # [3 passed] needs ffmpeg; downloads the default model once
+pytest -m "not e2e"     # [64 passed]
+pytest -m e2e           # [4 passed] needs ffmpeg; downloads the default model once
 ```
 
 ## 2. Deterministic replay — the reference number
@@ -92,7 +92,9 @@ frame refreshes every interval, next to passers-by, in-scene count, per-minute b
 log tail. *stop* ends the run. The run is written to `runs/web/<run_dir>` like any other, so
 `streamcount report` works on it afterwards.
 
-[Expect: numbers climbing within ~15 s; a frame with red boxes and `id…` labels.]
+[Expect: numbers climbing within ~15 s; a frame with red boxes and `id…` labels. After a few
+minutes, `runs/web/<run_dir>/frames/` holds 10 JPEGs, not hundreds — dashboard runs keep only
+the last 10 annotated frames (`--keep-frames`).]
 
 ## How to judge the result
 

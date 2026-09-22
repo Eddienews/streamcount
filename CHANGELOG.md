@@ -3,6 +3,19 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `run --keep-frames N`: cap the annotated frames kept on disk. A live session otherwise writes
+  ~320 MB/h of JPEGs while the dashboard only ever shows the newest one; the last N frames are
+  kept instead (`0` = keep every frame, the CLI default). Dashboard runs pass `--keep-frames 10`
+  (editable under *options*); `summary.json` records `keep_frames` when set.
+
+### Fixed
+- The dashboard's `/latest.jpg` picked the newest frame with a plain name sort, which puts
+  `f10000` *before* `f9999` — past 9,999 frames (~5.5 h at 2 s) the page could serve a stale
+  frame. The numeric frame index now decides.
+
 ## [0.1.0] - 2026-09-21
 
 First public version.
