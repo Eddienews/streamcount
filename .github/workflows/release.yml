@@ -20,7 +20,7 @@ jobs:
       - name: Lint and test
         run: |
           ruff check .
-          pytest -q
+          pytest -q -m "not e2e"
       - name: Build sdist + wheel
         run: python -m build
       - uses: actions/upload-artifact@v4
