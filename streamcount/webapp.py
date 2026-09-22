@@ -93,6 +93,8 @@ def build_run_command(python: str, runs_root: Path, tag: str, source_flag: str,
         vlm_check = float(options.get("vlm_check") or 0)
         if vlm_check > 0:
             cmd += ["--vlm-check", f"{vlm_check:g}"]
+            if options.get("jev_router"):
+                cmd += ["--jev-router"]
     return cmd
 
 
@@ -545,6 +547,8 @@ PAGE_HTML = """<!doctype html>
         </label>
         <label class="opt">confiança <input type="number" id="conf" value="0.25" min="0.05" max="0.9" step="0.05"></label>
         <label class="opt" id="lKeep">guardar frames <input type="number" id="keep" value="10" min="0" max="999" step="1"></label>
+        <label class="opt" id="lVlmCheck">vlm a cada (s) <input type="number" id="vlmcheck" value="0" min="0" max="3600" step="5"></label>
+        <label class="opt" id="lJev">roteador (Jev) <input type="checkbox" id="jev"></label>
         <label class="opt">headers <input type="text" class="wide" id="headers" placeholder="Referer=https://www.earthcam.com/"></label>
       </div>
     </details>
@@ -575,13 +579,15 @@ const T = {
         active:"em movimento", rate:"ritmo", perMinute:"passagens por minuto",
         last:"últimas passagens", idle:"sem contagem ativa", frames:"frames",
         interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames", record:"gravar mp4",
-        target:"alvo", people:"pessoas", cars:"carros" },
+        target:"alvo", people:"pessoas", cars:"carros", vlmCheck:"vlm a cada (s)",
+        jev:"roteador (Jev)" },
   en: { stopped:"idle", live:"counting", hint:"Paste a live stream or recording link",
         go:"count →", stop:"stop", adv:"options", passes:"passers-by", now:"in scene now",
         active:"moving", rate:"rate", perMinute:"passes per minute",
         last:"latest passes", idle:"no active run", frames:"frames",
         interval:"interval", engine:"engine", of:"of", keep:"keep frames", record:"record mp4",
-        target:"target", people:"people", cars:"cars" }
+        target:"target", people:"people", cars:"cars", vlmCheck:"vlm every (s)",
+        jev:"Jev router" }
 };
 let lang = localStorage.getItem("sc-lang") || "en";
 function applyLang() {
@@ -602,6 +608,8 @@ function applyLang() {
   document.getElementById("lKeep").firstChild.textContent = t.keep + " ";
   document.getElementById("lTarget").firstChild.textContent = t.target + " ";
   document.getElementById("lMp4").firstChild.textContent = t.record + " ";
+  document.getElementById("lVlmCheck").firstChild.textContent = t.vlmCheck + " ";
+  document.getElementById("lJev").firstChild.textContent = t.jev + " ";
   const tsel = document.getElementById("target");
   tsel.options[0].textContent = t.people;
   tsel.options[1].textContent = t.cars;
@@ -626,7 +634,8 @@ $("form").onsubmit = async (ev) => {
     engine: $("engine").value, conf: parseFloat($("conf").value || "0.25"),
     target: $("target").value, headers: $("headers").value.trim() || null,
     keep_frames: Number.isFinite(keepVal) ? keepVal : 10, flow: true,
-    timelapse: $("mp4").checked, timelapse_fps: parseInt($("mp4fps").value, 10) || 12
+    timelapse: $("mp4").checked, timelapse_fps: parseInt($("mp4fps").value, 10) || 12,
+    vlm_check: parseFloat($("vlmcheck").value) || 0, jev_router: $("jev").checked
   };
   const res = await fetch("/api/start", { method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ source: $("source").value, options }) });

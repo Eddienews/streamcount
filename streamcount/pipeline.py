@@ -21,6 +21,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from .detector import VEHICLE_CLASSES, Detector, resolve_classes
+from .router import JevRouter, RouterMetrics, describe_frame, resolve_jev_key, scene_change
 from .sources import (
     default_headers,
     frames_from_ffmpeg,
@@ -66,6 +67,10 @@ class RunConfig:
     flow_min_move: float = 40.0
     flow_max_age: float = 5.0
     vlm_check: float = 0.0     # seconds between recall checks (0 = off)
+    jev_router: bool = False   # let Jev gate each recall check (needs a TypeSafe key)
+    jev_key: str | None = None
+    jev_model: str = "jev-latest"
+    jev_threshold: float = 0.5
 
     # output
     out_dir: Path = Path("runs")
@@ -296,6 +301,22 @@ def run(config: RunConfig) -> RunResult:
                          target=vlm_target)
         _log(f"[info] VLM: {config.vlm_model} @ {config.vlm_base_url} (key from {origin})")
 
+    router = None
+    if config.jev_router:
+        if not (config.flow and config.vlm_check > 0):
+            raise SystemExit(
+                "--jev-router gates the --vlm-check anchor: run with --flow --vlm-check N"
+            )
+        jev_key, jev_origin = resolve_jev_key(config.jev_key)
+        if not jev_key:
+            raise SystemExit(
+                "--jev-router needs a TypeSafe key: --jev-key, STREAMCOUNT_JEV_KEY or "
+                "TYPESAFE_API_KEY (env or .env file)"
+            )
+        router = JevRouter(jev_key, model=config.jev_model, threshold=config.jev_threshold)
+        _log(f"[info] Jev router: {config.jev_model} (key from {jev_origin}); a recall check "
+             f"runs when uncertainty >= {config.jev_threshold:g}")
+
     if config.flow and detector is None:
         raise SystemExit("--flow needs the local detector (--engine yolo or both)")
 
@@ -330,6 +351,10 @@ def run(config: RunConfig) -> RunResult:
 
     counts_by_engine: dict[str, list[int]] = {}
     vlm_check_counts: list[int] = []
+    router_prev_small = None          # the last decision's frame sample (scene change)
+    router_last_check_at: float | None = None
+    router_last_vlm: int | None = None
+    router_last_local: int | None = None
     t_rel = 0.0
     t0 = time.monotonic()
     frames_done = 0
@@ -391,12 +416,48 @@ def run(config: RunConfig) -> RunResult:
                     vlm_count: int | str = ""
                     if vlm is not None and config.vlm_check > 0 and \
                             (t_rel % config.vlm_check) < config.interval:
-                        t_vlm = time.time()
-                        answer = vlm.count(image)
-                        vlm_count = answer["count"]
-                        vlm_check_counts.append(answer["count"])
-                        _log(f"{index:>5} {'vlm':<5} {answer['count']:>6} "
-                             f"{int((time.time() - t_vlm) * 1000):>6}  (recall check)")
+                        escalate = True
+                        if router is not None:
+                            now = time.monotonic()
+                            brightness, small = describe_frame(image)
+                            metrics = RouterMetrics(
+                                target=config.target,
+                                interval_s=config.interval,
+                                detections=len(detections),
+                                tracks_active=len(active),
+                                tracks_moving=sum(
+                                    1 for tr in active if tr["disp"] >= config.flow_min_move
+                                ),
+                                low_conf=sum(
+                                    1 for d in detections if d[4] < config.conf + 0.15
+                                ),
+                                brightness=brightness,
+                                scene_change=scene_change(small, router_prev_small),
+                                passes_total=tracker.total,
+                                seconds_since_last_check=(now - router_last_check_at)
+                                if router_last_check_at is not None else 0.0,
+                                last_vlm_count=router_last_vlm,
+                                last_vlm_local=router_last_local,
+                            )
+                            router_prev_small = small
+                            router_last_check_at = now
+                            decision = router.decide(metrics)
+                            escalate = decision.escalate
+                            unc = "-" if decision.uncertainty is None else f"{decision.uncertainty:.2f}"
+                            conf = "-" if decision.confidence is None else f"{decision.confidence:.2f}"
+                            note = f" [{decision.error}]" if decision.error else ""
+                            _log(f"[jev]       escalate={str(decision.escalate):<5} "
+                                 f"uncertainty={unc} conf={conf} reason={decision.reason} "
+                                 f"({decision.latency_ms} ms){note}")
+                        if escalate:
+                            t_vlm = time.time()
+                            answer = vlm.count(image)
+                            vlm_count = answer["count"]
+                            vlm_check_counts.append(answer["count"])
+                            router_last_vlm = answer["count"]
+                            router_last_local = len(detections)
+                            _log(f"{index:>5} {'vlm':<5} {answer['count']:>6} "
+                                 f"{int((time.time() - t_vlm) * 1000):>6}  (recall check)")
 
                     _log(f"{index:>5} {'yolo':<5} {len(detections):>6} {ms:>6}  "
                          f"active={len(active)} passes={tracker.total}")
@@ -495,6 +556,13 @@ def run(config: RunConfig) -> RunResult:
             _log(f"  VLM recall check: yolo visible={mean_yolo:.1f} vs vlm={mean_vlm:.1f} "
                  f"-> recall~{recall * 100:.0f}%")
             _log(f"  recall-corrected passes ~ {corrected} (floor: {tracker.total})")
+
+        if router is not None:
+            stats = router.stats()
+            summary.update(jev_router=stats)
+            _log(f"  Jev router: {stats['escalations']}/{stats['checks']} checks escalated "
+                 f"({stats['skipped']} skipped, {stats['errors']} errors, "
+                 f"mean {stats.get('mean_latency_ms', 0)} ms)")
 
     for name, counts in counts_by_engine.items():
         arr = [c for c in counts if c >= 0]

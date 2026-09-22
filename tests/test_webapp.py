@@ -55,7 +55,7 @@ def test_detect_rejects_garbage():
 # --------------------------------------------------------------------------- #
 def test_page_has_the_essentials():
     for marker in ("passers-by", "/api/status", "/api/start", "/api/stop", "/latest.jpg",
-                   'id="keep"', 'id="mp4"', "/timelapse.mp4"):
+                   'id="keep"', 'id="mp4"', "/timelapse.mp4", 'id="vlmcheck"', 'id="jev"'):
         assert marker in PAGE_HTML
     assert "e8a33d" in PAGE_HTML, "amber accent must survive edits"
 
@@ -144,6 +144,18 @@ def test_build_run_command_timelapse_option(tmp_path: Path):
     assert "--timelapse" in cmd
     assert cmd[cmd.index("--timelapse-fps") + 1] == "8"
     assert "--timelapse" not in build_run_command(*base, {}), "off by default"
+
+
+def test_build_run_command_vlm_check_and_jev_router(tmp_path: Path):
+    from streamcount.webapp import build_run_command
+
+    base = ("py", tmp_path, "t", "--url", "rtsp://cam/1")
+    cmd = build_run_command(*base, {"vlm_check": 30, "jev_router": True})
+    assert cmd[cmd.index("--vlm-check") + 1] == "30"
+    assert "--jev-router" in cmd
+    assert "--jev-router" not in build_run_command(*base, {"vlm_check": 30})
+    assert "--vlm-check" not in build_run_command(*base, {"jev_router": True}), \
+        "the router has nothing to gate without a cadence"
 
 
 def test_latest_frame_prefers_numeric_index(tmp_path: Path):

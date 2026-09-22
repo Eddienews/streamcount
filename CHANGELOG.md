@@ -14,6 +14,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
   while it is going (ffmpeg image2pipe → `timelapse.mp4` in the run folder, finalized when the run
   stops). Works together with `--keep-frames` — the video does not depend on the JPEGs. The
   dashboard exposes it as a *record mp4* option and links the file on the page.
+- `run --jev-router` (`--jev-key`, `--jev-model`, `--jev-threshold`; off by default): with
+  `--vlm-check N` the recall anchor stops following the clock. Every N seconds Jev (TypeSafe's
+  System One, `api.typesafe.ai/v1/systemone`) answers one typed question about whether the
+  local reading is likely wrong (dark or blurred frame, dense scene, detections at the
+  confidence floor, a scene change, a disagreeing last anchor) and the paid VLM call runs only
+  when the answer says it is worth it. What leaves the machine is a paragraph of numbers, never
+  a frame; a failing router escalates anyway (the anchor is the safe side); `summary.json`
+  records `jev_router: {checks, escalations, skipped, errors, mean_latency_ms}`.
 
 ### Fixed
 - **EarthCam links now work without a manual `Referer`**: the HLS CDN answers 403 without one
@@ -36,6 +44,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
 - The *target* (people/cars) and *record mp4* controls moved out of *options*: they sit right
   under the link field now, so neither needs the advanced panel. The language toggle also
   translates the target options (they were hardcoded Portuguese).
+- The dashboard *options* grid gained the hybrid pair: `vlm every (s)` (`--vlm-check`) and the
+  **Jev router** switch (`--jev-router`) — the CLI's option-or-not, exposed, with keys still
+  coming from the environment (the page never carries them).
 
 ## [0.1.0] - 2026-09-21
 

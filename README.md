@@ -82,6 +82,26 @@ streamcount find-stream "https://www.earthcam.com/usa/louisiana/neworleans/bourb
 streamcount report runs/20260921_003057_yolo_hora1 --chart chart.png
 ```
 
+### Optional: the Jev router (TypeSafe)
+
+`--vlm-check` spends one paid vision-model call on a fixed clock. `--jev-router` replaces the
+clock with a decision: every N seconds Jev (TypeSafe's System One model) is asked one typed
+question — *is the local reading likely wrong right now?* — and the anchor runs only when the
+answer says it is worth it (`--jev-threshold`, default 0.5, sets how suspicious Jev must be).
+Off by default; bring your own key.
+
+```bash
+export TYPESAFE_API_KEY=...        # console.typesafe.ai/settings/keys
+streamcount run --url "$STREAM" --flow --tiles 2 --interval 2 --frames 1800 \
+    --vlm-check 30 --jev-router
+```
+
+What leaves the machine is one short paragraph of numbers (detections, active and moving
+tracks, detections at the confidence floor, brightness, scene change, how the last anchor
+compared) — never a frame. A router call that fails escalates anyway: the anchor is the safe
+side, the skip is the optimisation. `summary.json` records the decisions as
+`jev_router: {checks, escalations, skipped, errors, mean_latency_ms}`.
+
 ### Counting vehicles
 
 ```bash
@@ -115,8 +135,11 @@ Everything stays on your machine (bound to `127.0.0.1`; no data leaves it, keys 
 Dashboard runs keep only the **last 10 annotated frames** on disk (`--keep-frames`, editable
 under *options*) — a multi-hour session would otherwise write ~320 MB/h of JPEGs, and the page
 only ever needs the newest one. Tick *record mp4* and the run writes an annotated
-`timelapse.mp4` while it counts (the page links it as ▶ when available) — a compact video of
-the session that does not depend on the JPEGs staying on disk.
+an annotated `timelapse.mp4` while it counts (the page links it as ▶ when available) — a compact video of
+the session that does not depend on the JPEGs staying on disk. The *options* grid also carries
+the hybrid pair — `vlm every (s)` and the **Jev router** switch; both stay off unless used, and
+the keys they need come from the environment (`OPENROUTER_API_KEY`, `TYPESAFE_API_KEY`), never
+from the page.
 
 Outputs (one folder per run):
 
@@ -126,7 +149,7 @@ Outputs (one folder per run):
 | `events.csv` | flow mode: one row per person counted (`t`, `id`, `hits`, `displacement`, running total) |
 | `frames/*.jpg` | annotated frames (`--annotate`; cap the disk with `--keep-frames N`): boxes, track ids, running total |
 | `timelapse.mp4` | annotated timelapse video of the run (`--timelapse`; `--timelapse-fps` sets playback speed) |
-| `summary.json` | machine-readable summary, including recall correction when `--vlm-check` is used |
+| `summary.json` | machine-readable summary, including recall correction when `--vlm-check` is used and `jev_router` decision stats when the router is on |
 
 ## Flow mode — "who passed", not "how many are on screen"
 

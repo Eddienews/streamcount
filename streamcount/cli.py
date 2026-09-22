@@ -57,6 +57,14 @@ def _add_flow_args(parser: argparse.ArgumentParser) -> None:
                        help="seconds without a detection before a track dies (ghost re-id lasts 15 s)")
     group.add_argument("--vlm-check", type=float, default=0.0,
                        help="run the VLM every N seconds as a recall anchor (0 = off)")
+    group.add_argument("--jev-router", action="store_true",
+                       help="with --vlm-check: ask Jev (TypeSafe) whether each recall check "
+                            "is worth its cost (bring your own key; off by default)")
+    group.add_argument("--jev-key", default=None,
+                       help="TypeSafe key (else STREAMCOUNT_JEV_KEY/TYPESAFE_API_KEY/.env)")
+    group.add_argument("--jev-model", default="jev-latest")
+    group.add_argument("--jev-threshold", type=float, default=0.5,
+                       help="escalate the recall check when Jev's uncertainty is >= this")
 
 
 def _add_output_args(parser: argparse.ArgumentParser) -> None:
@@ -188,6 +196,10 @@ def main(argv: list[str] | None = None) -> int:
         flow_min_move=args.flow_min_move,
         flow_max_age=args.flow_max_age,
         vlm_check=args.vlm_check,
+        jev_router=args.jev_router,
+        jev_key=args.jev_key,
+        jev_model=args.jev_model,
+        jev_threshold=args.jev_threshold,
         out_dir=args.out,
         annotate=args.annotate,
         keep_frames=args.keep_frames,

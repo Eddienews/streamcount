@@ -17,7 +17,7 @@ Requirements: Python 3.10+, `ffmpeg` on PATH. Add `yt-dlp` for YouTube sources.
 ## 1. Automated suite (offline, ~15 s)
 
 ```bash
-pytest -m "not e2e"     # [70 passed]
+pytest -m "not e2e"     # [81 passed]
 pytest -m e2e           # [4 passed] needs ffmpeg; downloads the default model once
 ```
 
@@ -97,7 +97,26 @@ log tail. *stop* ends the run. The run is written to `runs/web/<run_dir>` like a
 minutes, `runs/web/<run_dir>/frames/` holds 10 JPEGs, not hundreds — dashboard runs keep only
 the last 10 annotated frames (`--keep-frames`). Tick *record mp4* before pressing count to get
 an annotated `timelapse.mp4` in the run folder; the page shows a ▶ link once it exists. Press
-*stop* and the run closes gracefully — the folder gains `summary.json` + `chart.png`.]
+*stop* and the run closes gracefully — the folder gains `summary.json` + `chart.png`.
+*options* also carries `vlm every (s)` and the *Jev router* switch for a hybrid run.]
+
+## 9. Optional: the Jev router (TypeSafe)
+
+Off by default; needs a TypeSafe key (`console.typesafe.ai/settings/keys`). To check the gate
+without any paid vision model, point the anchor at a stub: any server answering the OpenAI
+shape with `{"count": 7}` works.
+
+```bash
+export TYPESAFE_API_KEY=...
+streamcount run --images <frames-dir> --flow --tiles 2 --interval 2 --frames 24 \
+    --vlm-check 6 --vlm-key stub --vlm-base-url http://127.0.0.1:8899/v1 --jev-router
+```
+
+[Expect: one `[jev] escalate=… uncertainty=… reason=…` line per check, VLM lines only for the
+escalated checks, and `summary.json` with `jev_router: {checks, escalations, skipped, errors,
+mean_latency_ms}`. A live 24-frame replay gave 8 decisions / 1 escalation / 0 errors, ~450 ms
+each; a direct probe of the real API separated a calm daylight state (uncertainty 0.11, skip)
+from a dark dense one (0.87, escalate).]
 
 ## How to judge the result
 
