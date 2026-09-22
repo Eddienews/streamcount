@@ -663,7 +663,8 @@ async function tick() {
       img.style.display = "block";
       img.src = "/latest.jpg?t=" + Date.now();
     }
-    $("mp4box").style.display = s.timelapse ? "block" : "none";
+    // a still-growing MP4 has no moov atom yet — only offer it once the run is over
+    $("mp4box").style.display = (s.timelapse && !s.running) ? "block" : "none";
     $("log").textContent = (s.log_tail || []).slice(-6).join("\\n");
   } catch (e) { /* servidor fora: tenta de novo no próximo tick */ }
 }
