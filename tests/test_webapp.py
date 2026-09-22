@@ -60,6 +60,13 @@ def test_page_has_the_essentials():
     assert "e8a33d" in PAGE_HTML, "amber accent must survive edits"
 
 
+def test_target_and_record_mp4_sit_outside_the_options():
+    """Choose people/cars and tick record-mp4 without opening *ajustes*."""
+    options_at = PAGE_HTML.index("<details>")
+    assert PAGE_HTML.index('id="target"') < options_at, "target selector must be visible"
+    assert PAGE_HTML.index('id="mp4"') < options_at, "record mp4 must be visible"
+
+
 def test_tail_frames_parses_last_row(tmp_path: Path):
     csv = tmp_path / "frames.csv"
     csv.write_text(
@@ -148,6 +155,33 @@ def test_latest_frame_prefers_numeric_index(tmp_path: Path):
     for name in ("f9999_flow.jpg", "f0001_flow.jpg", "f10000_vlm.jpg", "notes.txt"):
         (tmp_path / name).write_bytes(b"x")
     assert latest_frame(tmp_path).name == "f10000_vlm.jpg"
+
+
+def test_supervisor_stop_writes_a_stop_file(tmp_path: Path):
+    """The panel's stop is graceful: a STOP file lets the run finish summary + chart."""
+    sup = Supervisor(tmp_path)
+    sup._tag = "webabc"
+    run_dir = tmp_path / "20260922_010000_yolo_webabc"
+    run_dir.mkdir()
+
+    class _Proc:
+        returncode = None
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            assert (run_dir / "STOP").exists(), "stop() must ask before killing"
+            self.returncode = 0
+            return 0
+
+        def terminate(self):  # pragma: no cover - grace must win
+            raise AssertionError("terminate() should not be needed")
+
+    sup._proc = _Proc()
+    result = sup.stop()
+    assert result["ok"] and "stopped" in result["note"]
+    assert (run_dir / "STOP").exists()
 
 
 # --------------------------------------------------------------------------- #

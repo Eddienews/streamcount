@@ -105,9 +105,11 @@ and the running log):
 streamcount serve --port 8766 --open      # opens http://127.0.0.1:8766 in your browser
 ```
 
-<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard: 55 passers-by, per-minute bars, latest passes with track ids, the options panel (keep-frames, record mp4) and the timelapse.mp4 link">
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard: 28 passers-by, the target picker and record-mp4 right under the link field, per-minute bars, latest passes with track ids and the timelapse.mp4 link">
 
-It is a thin supervisor over `streamcount run` — same engines, same options, one page. The run
+It is a thin supervisor over `streamcount run` — same engines, same options, one page. The
+target picker (people/cars) and the *record mp4* toggle sit right under the link field — no need
+to open *options* for either. The run
 is a **live session**: it stops when you press *stop*, not after the CLI default of 10 frames.
 Everything stays on your machine (bound to `127.0.0.1`; no data leaves it, keys included).
 Dashboard runs keep only the **last 10 annotated frames** on disk (`--keep-frames`, editable

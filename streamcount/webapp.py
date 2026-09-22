@@ -146,12 +146,25 @@ class Supervisor:
         with self._lock:
             if self._proc is None or self._proc.poll() is not None:
                 return {"ok": True, "note": "no run in progress"}
-            self._proc.terminate()
+            proc = self._proc
+            run_dir = self._find_run_dir()
+            if run_dir is not None:
+                # graceful: the pipeline sees this, leaves the frame loop and still writes
+                # summary.json + chart.png (the timelapse encoder closes properly, too)
+                (run_dir / "STOP").write_text("stop\n", encoding="utf-8")
+        if run_dir is not None:
             try:
-                self._proc.wait(timeout=10)
+                proc.wait(timeout=25)
+                return {"ok": True, "note": "run stopped"}
             except subprocess.TimeoutExpired:  # pragma: no cover - defensive
-                self._proc.kill()
-            return {"ok": True, "note": "run stopped"}
+                pass
+        if proc.poll() is None:
+            proc.terminate()  # no run dir yet, or it did not stop in time
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:  # pragma: no cover - defensive
+                proc.kill()
+        return {"ok": True, "note": "run stopped (forced)"}
 
     # -- introspection ------------------------------------------------------ #
     def _find_run_dir(self) -> Path | None:
@@ -446,6 +459,7 @@ PAGE_HTML = """<!doctype html>
   form { margin-bottom: 56px; }
   label.hint { display: block; font-size: 15px; color: var(--dim); margin-bottom: 10px; }
   .row { display: flex; align-items: baseline; gap: 18px; }
+  .qrow { display: flex; align-items: baseline; gap: 34px; margin-top: 16px; }
   input[type=text] {
     flex: 1; background: transparent; border: 0; border-bottom: 1px solid var(--line);
     color: var(--ink); font: 17px/1.6 Georgia, serif; padding: 6px 2px;
@@ -515,20 +529,22 @@ PAGE_HTML = """<!doctype html>
       <button class="link muted" type="button" id="stop" style="display:none">parar</button>
     </div>
     <div id="error"></div>
+    <div class="qrow">
+      <label class="opt" id="lTarget">alvo
+        <select id="target"><option value="people">pessoas</option><option value="cars">carros</option></select>
+      </label>
+      <label class="opt" id="lMp4">gravar mp4 <input type="checkbox" id="mp4"> <input type="number" id="mp4fps" value="12" min="1" max="60" step="1"></label>
+    </div>
     <details>
       <summary id="advSummary">ajustes</summary>
       <div class="opts">
-        <label class="opt">intervalo (s) <input type="number" id="interval" value="2" min="1" max="60" step="1"></label>
+        <label class="opt" id="lInterval">intervalo (s) <input type="number" id="interval" value="2" min="1" max="60" step="1"></label>
         <label class="opt">tiles <input type="number" id="tiles" value="2" min="1" max="3" step="1"></label>
         <label class="opt">motor
           <select id="engine"><option value="yolo">yolo (local)</option><option value="vlm">vlm (API)</option><option value="both">both</option></select>
         </label>
         <label class="opt">confiança <input type="number" id="conf" value="0.25" min="0.05" max="0.9" step="0.05"></label>
         <label class="opt" id="lKeep">guardar frames <input type="number" id="keep" value="10" min="0" max="999" step="1"></label>
-        <label class="opt" id="lMp4">gravar mp4 <input type="checkbox" id="mp4"> <input type="number" id="mp4fps" value="12" min="1" max="60" step="1"></label>
-        <label class="opt">alvo
-          <select id="target"><option value="people">pessoas</option><option value="cars">carros</option></select>
-        </label>
         <label class="opt">headers <input type="text" class="wide" id="headers" placeholder="Referer=https://www.earthcam.com/"></label>
       </div>
     </details>
@@ -558,12 +574,14 @@ const T = {
         go:"contar →", stop:"parar", adv:"ajustes", passes:"passers-by", now:"na cena agora",
         active:"em movimento", rate:"ritmo", perMinute:"passagens por minuto",
         last:"últimas passagens", idle:"sem contagem ativa", frames:"frames",
-        interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames", record:"gravar mp4" },
+        interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames", record:"gravar mp4",
+        target:"alvo", people:"pessoas", cars:"carros" },
   en: { stopped:"idle", live:"counting", hint:"Paste a live stream or recording link",
         go:"count →", stop:"stop", adv:"options", passes:"passers-by", now:"in scene now",
         active:"moving", rate:"rate", perMinute:"passes per minute",
         last:"latest passes", idle:"no active run", frames:"frames",
-        interval:"interval", engine:"engine", of:"of", keep:"keep frames", record:"record mp4" }
+        interval:"interval", engine:"engine", of:"of", keep:"keep frames", record:"record mp4",
+        target:"target", people:"people", cars:"cars" }
 };
 let lang = localStorage.getItem("sc-lang") || "en";
 function applyLang() {
@@ -580,9 +598,13 @@ function applyLang() {
   document.getElementById("lRate").textContent = t.rate;
   document.getElementById("lPerMinute").textContent = t.perMinute;
   document.getElementById("lLast").textContent = t.last;
-  document.querySelectorAll("label.opt")[0].firstChild.textContent = t.interval + " (s) ";
+  document.getElementById("lInterval").firstChild.textContent = t.interval + " (s) ";
   document.getElementById("lKeep").firstChild.textContent = t.keep + " ";
+  document.getElementById("lTarget").firstChild.textContent = t.target + " ";
   document.getElementById("lMp4").firstChild.textContent = t.record + " ";
+  const tsel = document.getElementById("target");
+  tsel.options[0].textContent = t.people;
+  tsel.options[1].textContent = t.cars;
 }
 document.getElementById("lang").onclick = () => {
   lang = lang === "pt" ? "en" : "pt"; localStorage.setItem("sc-lang", lang); applyLang();

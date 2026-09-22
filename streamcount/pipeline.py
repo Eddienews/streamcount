@@ -353,6 +353,9 @@ def run(config: RunConfig) -> RunResult:
             ["ts_iso", "t_rel_s", "event", "id", "hits", "disp_px", "total"]
         )
 
+    # a STOP file in the run dir is the panel's graceful stop (hard kill only as fallback)
+    stop_file = run_dir / "STOP"
+
     try:
         with open(csv_path, "w", newline="", encoding="utf-8") as frames_csv:
             writer = csv.writer(frames_csv)
@@ -362,6 +365,9 @@ def run(config: RunConfig) -> RunResult:
             )
             for index, image in source_frames:
                 if index > total_planned:
+                    break
+                if stop_file.exists():
+                    _log(f"[stop] STOP file seen — closing {run_dir.name} cleanly")
                     break
                 frames_done = index
                 t_rel = (time.monotonic() - t0) if timeline_mode == "wall" else (index - 1) * config.interval

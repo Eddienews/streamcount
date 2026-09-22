@@ -22,13 +22,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
 - The dashboard's `/latest.jpg` picked the newest frame with a plain name sort, which puts
   `f10000` *before* `f9999` — past 9,999 frames (~5.5 h at 2 s) the page could serve a stale
   frame. The numeric frame index now decides.
+- **Stopping a panel run is graceful**: the supervisor drops a `STOP` file in the run directory
+  and the pipeline leaves the frame loop normally, writing `summary.json` and `chart.png` (+
+  closing the timelapse encoder). Before this a manual stop was a hard terminate: the MP4 only
+  survived because ffmpeg finalises on EOF, and the summary and the chart were lost.
 
 ### Changed
-- README assets refreshed from a fresh 3-minute live run (Bourbon Street, 90 frames, 55
-  passers-by): `assets/dashboard.png` now shows the *record mp4* option and the
-  `▶ timelapse.mp4` link; `assets/demo.gif` was rebuilt from the same run's frames with the new
-  `scripts/render_demo_gif.py` (also uses the new `--keep-frames 0`/`--timelapse` flags only as
-  data sources). Three unreferenced screenshots dropped from `assets/`.
+- README assets refreshed from real runs: `assets/dashboard.png` now shows the *target* picker
+  and *record mp4* right under the link field (no need to open *options*) plus the
+  `▶ timelapse.mp4` link of a stopped run (43 frames, 28 passers-by); `assets/demo.gif` was
+  rebuilt from a 3-minute run's frames (90 frames, 55 passers-by) with the new
+  `scripts/render_demo_gif.py`. Three unreferenced screenshots dropped from `assets/`.
+- The *target* (people/cars) and *record mp4* controls moved out of *options*: they sit right
+  under the link field now, so neither needs the advanced panel. The language toggle also
+  translates the target options (they were hardcoded Portuguese).
 
 ## [0.1.0] - 2026-09-21
 
