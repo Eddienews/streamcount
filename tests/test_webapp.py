@@ -6,6 +6,7 @@ All offline: the HTTP tests use a stub supervisor, so no ffmpeg, no model, no ke
 from __future__ import annotations
 
 import json
+import socket
 import threading
 import urllib.error
 import urllib.request
@@ -216,3 +217,37 @@ def test_unknown_route_404(dashboard):
     with pytest.raises(urllib.error.HTTPError) as excinfo:
         _get(base + "/nope")
     assert excinfo.value.code == 404
+
+
+def test_servers_bind_both_loopbacks():
+    """Browsers may resolve localhost to ::1 — the dashboard must answer on both."""
+    from streamcount.webapp import make_servers
+
+    servers, errors = make_servers(0, make_handler(StubSupervisor()))
+    try:
+        families = {server.address_family for server in servers}
+        assert socket.AF_INET in families, f"IPv4 loopback missing: {errors}"
+        assert socket.AF_INET6 in families, f"IPv6 loopback missing: {errors}"
+    finally:
+        for server in servers:
+            server.server_close()
+
+
+def test_port_already_in_use_fails_loudly():
+    """allow_reuse_address must stay off: a second instance may not hijack the port."""
+    from streamcount.webapp import make_servers
+
+    servers, _ = make_servers(0, make_handler(StubSupervisor()))
+    try:
+        assert servers, "need a first server for this test"
+        port = servers[0].server_address[1]
+        second, errors = make_servers(port, make_handler(StubSupervisor()))
+        try:
+            assert not any(s.address_family == socket.AF_INET for s in second)
+            assert any("127.0.0.1" in line for line in errors)
+        finally:
+            for server in second:
+                server.server_close()
+    finally:
+        for server in servers:
+            server.server_close()

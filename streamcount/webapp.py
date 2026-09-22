@@ -17,6 +17,7 @@ from __future__ import annotations
 import csv
 import json
 import secrets
+import socket
 import subprocess
 import sys
 import threading
@@ -326,22 +327,61 @@ def make_handler(supervisor: Supervisor) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
+class _DashboardServer(ThreadingHTTPServer):
+    # On Windows SO_REUSEADDR lets a SECOND process hijack the same port (the "phantom
+    # server" that kept serving old code). Refuse to share the port instead.
+    allow_reuse_address = False
+
+
+class _DashboardServerV6(_DashboardServer):
+    address_family = socket.AF_INET6
+
+
+def make_servers(port: int, handler) -> tuple[list[ThreadingHTTPServer], list[str]]:
+    """Bind both loopback addresses (127.0.0.1 and ::1). Returns (servers, errors).
+
+    Browsers happily pick IPv6 for `localhost`; serving only IPv4 makes them show
+    ERR_CONNECTION_REFUSED depending on how the name resolves.
+    """
+    servers: list[ThreadingHTTPServer] = []
+    errors: list[str] = []
+    for cls, address, label in (
+        (_DashboardServer, ("127.0.0.1", port), "127.0.0.1"),
+        (_DashboardServerV6, ("::1", port), "[::1]"),
+    ):
+        try:
+            servers.append(cls(address, handler))
+        except OSError as exc:
+            errors.append(f"{label}:{port} -> {exc.strerror or exc}")
+    return servers, errors
+
+
 def serve(port: int = 8766, runs_root: Path = Path("runs"), open_browser: bool = False) -> None:
     supervisor = Supervisor(runs_root)
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), make_handler(supervisor))
+    servers, errors = make_servers(port, make_handler(supervisor))
+    if not servers:
+        print("could not bind any loopback address to serve the dashboard:")
+        for line in errors:
+            print(f"  {line}")
+        print("another `streamcount serve` may already be running — pick another --port.")
+        return
     url = f"http://127.0.0.1:{port}/"
     print(f"streamcount dashboard: {url}  (Ctrl+C to stop)")
     if open_browser:
         import webbrowser
 
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+    extra = [threading.Thread(target=server.serve_forever, daemon=True) for server in servers[1:]]
+    for thread in extra:
+        thread.start()
     try:
-        httpd.serve_forever()
+        servers[0].serve_forever()
     except KeyboardInterrupt:
         print("\nstopping…")
     finally:
         supervisor.stop()
-        httpd.server_close()
+        for server in servers:
+            server.server_close()
 
 
 # --------------------------------------------------------------------------- #
