@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
-from streamcount.pipeline import frame_index, prune_frames
+from streamcount.pipeline import _Recorder, frame_index, prune_frames
 
 
 def _frames(directory: Path, *names: str) -> None:
@@ -23,6 +25,25 @@ def test_prune_keeps_only_the_last_n_frames(tmp_path: Path):
     assert prune_frames(tmp_path, 3) == 9
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "f0010_flow.jpg", "f0011_flow.jpg", "f0012_flow.jpg"]
+
+
+def test_recorder_close_reaps_encoder_without_flush_error(tmp_path: Path):
+    """Regression: closing stdin then communicate() raised ValueError on Linux
+
+    ("flush of closed file"). Windows tolerated it, so only the CI e2e caught it.
+    """
+    stub = subprocess.Popen(
+        [sys.executable, "-c", "import sys; sys.stdin.buffer.read()"],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+    )
+    recorder = _Recorder(tmp_path / "timelapse.mp4", 12.0)
+    recorder._proc = stub  # stand-in for a live ffmpeg encoder; no ffmpeg needed here
+    stub.stdin.write(b"\x00" * 16)
+    stub.stdin.flush()
+    recorder.close()
+    assert stub.stdin is None, "stdin must be detached before communicate()"
+    assert stub.returncode == 0, "the encoder must be reaped cleanly"
+    assert recorder._proc is None
 
 
 def test_prune_keeps_all_engines_of_a_kept_frame(tmp_path: Path):

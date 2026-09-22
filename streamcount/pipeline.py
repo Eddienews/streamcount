@@ -5,6 +5,7 @@ Optionally writes an annotated timelapse MP4 of the run as it goes (`--timelapse
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import io
 import json
@@ -188,35 +189,43 @@ class _Recorder:
             self._proc.stdin.write(self._buffer.getvalue())  # type: ignore[union-attr]
             self._proc.stdin.flush()  # type: ignore[union-attr]
         except OSError:  # encoder died (bad path, disk): warn once, keep counting
-            _log(f"[warn] timelapse encoder died: {self._error_tail()}")
+            _log(f"[warn] timelapse encoder died: {self._finish(timeout=10)[1] or 'no stderr'}")
             self._dead = True
-            self._proc = None
             return
         self.frames += 1
 
-    def _error_tail(self) -> str:
-        if self._proc is None:
-            return "no process"
+    def _finish(self, timeout: float) -> tuple[int | None, str]:
+        """Close stdin and reap the encoder; returns (returncode, stderr tail).
+
+        ``proc.stdin`` is detached before ``communicate()``: on Linux, communicate
+        flushes stdin and raises ``ValueError: flush of closed file`` once the pipe
+        is closed (Windows tolerates it — the first CI run failed only on Linux).
+        """
+        proc, self._proc = self._proc, None
+        if proc is None:
+            return None, ""
+        stdin, proc.stdin = proc.stdin, None
+        if stdin is not None:
+            with contextlib.suppress(OSError):
+                stdin.close()
         try:
-            _, err = self._proc.communicate(timeout=10)
+            _, err = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
-            self._proc.kill()
-            return "timed out"
-        return (err or b"").decode("utf-8", "replace").strip()[:200] or "no stderr"
+            proc.kill()
+            proc.communicate()
+            return None, "timed out"
+        except OSError as exc:  # the child was already gone; returncode is set
+            return proc.returncode, str(exc)
+        return proc.returncode, (err or b"").decode("utf-8", "replace").strip()[:200]
 
     def close(self) -> None:
         if self._proc is None:
             return
-        try:
-            self._proc.stdin.close()  # type: ignore[union-attr]
-            _, err = self._proc.communicate(timeout=120)
-        except (OSError, subprocess.TimeoutExpired):
-            self._proc.kill()
-            return
-        if self._proc.returncode != 0:
-            _log(f"[warn] timelapse encoder exited {self._proc.returncode}: "
-                 f"{(err or b'').decode('utf-8', 'replace').strip()[:200]}")
-        self._proc = None
+        code, err = self._finish(timeout=120)
+        if code not in (0, None):  # None = killed after a timeout, err carries the story
+            _log(f"[warn] timelapse encoder exited {code}: {err}")
+        elif err == "timed out":
+            _log("[warn] timelapse encoder did not exit; killed")
 
 
 def _default_timeline(source: str) -> str:

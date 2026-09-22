@@ -17,7 +17,7 @@ Requirements: Python 3.10+, `ffmpeg` on PATH. Add `yt-dlp` for YouTube sources.
 ## 1. Automated suite (offline, ~15 s)
 
 ```bash
-pytest -m "not e2e"     # [67 passed]
+pytest -m "not e2e"     # [68 passed]
 pytest -m e2e           # [4 passed] needs ffmpeg; downloads the default model once
 ```
 
