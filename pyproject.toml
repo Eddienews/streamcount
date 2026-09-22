@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "streamcount"
-version = "0.1.0"
+version = "0.2.0"
 description = "Count people and vehicles in any live stream or recording — YouTube, HLS, RTSP, files — using a local ONNX detector (no API cost) or a vision LLM (bring your own key)."
 readme = "README.md"
 requires-python = ">=3.10"
