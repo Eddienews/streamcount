@@ -33,6 +33,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
   environment.
 
 ### Fixed
+- **The dashboard now shows what a run was asked to do**: while a limit is set, the meta line
+  carries `limite N min (restam X)` as it counts down, plus `mp4` and `vlm`/`Jev` tags for the
+  hybrid legs. Before this the page echoed only interval/tiles/engine/conf/target — a
+  ten-minute limit or an active timelapse was invisible even though both were applied (the run
+  log had them; the page did not).
 - **EarthCam links now work without a manual `Referer`**: the HLS CDN answers 403 without one
   (token or not), so the pipeline adds `Referer=https://www.earthcam.com/` automatically when the
   user set none — explicit `--headers` always wins.

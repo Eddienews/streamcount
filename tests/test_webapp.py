@@ -56,7 +56,8 @@ def test_detect_rejects_garbage():
 def test_page_has_the_essentials():
     for marker in ("passers-by", "/api/status", "/api/start", "/api/stop", "/latest.jpg",
                    'id="keep"', 'id="mp4"', "/timelapse.mp4", 'id="vlmcheck"', 'id="jev"',
-                   'id="duration"', 'id="vlmmodel"', 'id="vlmurl"', 'id="jevmodel"'):
+                   'id="duration"', 'id="vlmmodel"', 'id="vlmurl"', 'id="jevmodel"',
+                   "options.duration", "t.limit"):
         assert marker in PAGE_HTML
     assert "e8a33d" in PAGE_HTML, "amber accent must survive edits"
 
@@ -176,6 +177,20 @@ def test_build_run_command_duration_and_models(tmp_path: Path):
     assert cmd[cmd.index("--jev-model") + 1] == "jev-latest"
     assert "--jev-model" not in build_run_command(*base, {"vlm_check": 20}), \
         "the Jev model only matters with the router on"
+
+
+def test_echo_options_surfaces_limit_and_hybrid_flags():
+    from streamcount.webapp import echo_options
+
+    plain = echo_options({"interval": 2, "target": "cars"})
+    assert plain["target"] == "cars"
+    assert "duration" not in plain and "timelapse" not in plain, "off unless set"
+    echo = echo_options({"duration": 10, "timelapse": True, "vlm_check": 30,
+                         "jev_router": True})
+    assert echo["duration"] == 10 and echo["timelapse"] is True
+    assert echo["vlm_check"] == 30 and echo["jev_router"] is True
+    assert "vlm_check" not in echo_options({"vlm_check": 0})
+    assert "jev_router" not in echo_options({"vlm_check": 30}), "router without a cadence"
 
 
 def test_latest_frame_prefers_numeric_index(tmp_path: Path):

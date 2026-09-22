@@ -110,6 +110,26 @@ def build_run_command(python: str, runs_root: Path, tag: str, source_flag: str,
     return cmd
 
 
+def echo_options(options: dict) -> dict:
+    """The run options the page echoes in /api/status (what the mission was asked to do)."""
+    echo: dict = {"interval": float(options.get("interval") or 2.0),
+                  "tiles": int(options.get("tiles") or 2),
+                  "engine": options.get("engine") or "yolo",
+                  "conf": options.get("conf"),
+                  "target": options.get("target") or "people"}
+    duration = float(options.get("duration") or 0)
+    if duration > 0:
+        echo["duration"] = duration
+    if options.get("timelapse"):
+        echo["timelapse"] = True
+    vlm_check = float(options.get("vlm_check") or 0)
+    if vlm_check > 0:
+        echo["vlm_check"] = vlm_check
+        if options.get("jev_router"):
+            echo["jev_router"] = True
+    return echo
+
+
 # --------------------------------------------------------------------------- #
 # Run supervisor
 # --------------------------------------------------------------------------- #
@@ -139,11 +159,6 @@ class Supervisor:
             self.runs_root.mkdir(parents=True, exist_ok=True)
             self._log_path = self.runs_root / f"{tag}.log"
             cmd = build_run_command(self.python, self.runs_root, tag, flag, arg, options)
-            interval = float(options.get("interval") or 2.0)
-            tiles = int(options.get("tiles") or 2)
-            engine = options.get("engine") or "yolo"
-            conf = options.get("conf")
-            target = options.get("target") or "people"
             self._log_handle = self._log_path.open("w", encoding="utf-8", errors="replace")
             self._proc = subprocess.Popen(
                 cmd, stdout=self._log_handle, stderr=subprocess.STDOUT, text=True
@@ -151,8 +166,7 @@ class Supervisor:
             self._tag = tag
             self._run_dir = None
             self._source = arg if flag != "--images" else arg
-            self._options = {"interval": interval, "tiles": tiles, "engine": engine,
-                             "conf": conf, "target": target}
+            self._options = echo_options(options)
             self._started_at = time.monotonic()
             return {"ok": True, "tag": tag, "command": " ".join(cmd)}
 
@@ -597,7 +611,7 @@ const T = {
         interval:"intervalo", engine:"motor", of:"de", keep:"guardar frames", record:"gravar mp4",
         target:"alvo", people:"pessoas", cars:"carros", vlmCheck:"vlm a cada (s)",
         jev:"roteador (Jev)", dur:"duração (min)", vlmModel:"modelo vlm",
-        vlmUrl:"servidor vlm", jevModel:"modelo jev" },
+        vlmUrl:"servidor vlm", jevModel:"modelo jev", limit:"limite", left:"restam" },
   en: { stopped:"idle", live:"counting", hint:"Paste a live stream or recording link",
         go:"count →", stop:"stop", adv:"options", passes:"passers-by", now:"in scene now",
         active:"moving", rate:"rate", perMinute:"passes per minute",
@@ -605,7 +619,7 @@ const T = {
         interval:"interval", engine:"engine", of:"of", keep:"keep frames", record:"record mp4",
         target:"target", people:"people", cars:"cars", vlmCheck:"vlm every (s)",
         jev:"Jev router", dur:"duration (min)", vlmModel:"vlm model",
-        vlmUrl:"vlm server", jevModel:"Jev model" }
+        vlmUrl:"vlm server", jevModel:"Jev model", limit:"limit", left:"left" }
 };
 let lang = localStorage.getItem("sc-lang") || "en";
 function applyLang() {
@@ -707,6 +721,18 @@ async function tick() {
     if (s.run_dir) bits.push((s.frames || 0) + " " + t.frames);
     if (s.options && s.options.interval) bits.push(t.interval + " " + s.options.interval + "s");
     if (s.options && s.options.engine) bits.push(t.engine + " " + s.options.engine);
+    if (s.options && s.options.duration) {
+      let lim = t.limit + " " + s.options.duration + " min";
+      if (s.running) {
+        const left = Math.ceil(Math.max(0, s.options.duration - (s.elapsed_s || 0) / 60));
+        lim += " (" + t.left + " " + left + " min)";
+      }
+      bits.push(lim);
+    }
+    if (s.options && s.options.vlm_check) {
+      bits.push((s.options.jev_router ? "Jev" : "vlm") + " " + s.options.vlm_check + "s");
+    }
+    if (s.options && s.options.timelapse) bits.push("mp4");
     if (s.source) bits.push(s.source.length > 64 ? s.source.slice(0, 64) + "…" : s.source);
     $("submeta").textContent = bits.length ? bits.join(" · ") : t.idle;
     drawChart(s.per_minute || []);
