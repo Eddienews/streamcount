@@ -106,7 +106,8 @@ an annotated `timelapse.mp4` in the run folder; the page shows a ▶ link once i
 
 Off by default; needs a TypeSafe key (`console.typesafe.ai/settings/keys`). To check the gate
 without any paid vision model, point the anchor at a stub: any server answering the OpenAI
-shape with `{"count": 7}` works.
+shape with `{"count": 7, "moving": 3}` works (the `moving` field is optional — a reply with
+only `count` still counts, it just skips the traffic-subset estimate).
 
 ```bash
 export TYPESAFE_API_KEY=...
@@ -122,9 +123,12 @@ from a dark dense one (0.87, escalate).]
 
 ## How to judge the result
 
-- **Counts are a floor.** The detector's recall was measured at 46–70 % depending on scene.
-  A number lower than your own eyeball count is expected, not a bug — use `--vlm-check` to
-  measure recall on your own scene and read the corrected range.
+- **Counts are a floor, and the correction is a range.** The periodic check asks the VLM for
+  both the total visible and the subset in traffic: `passes_corrected_moving` (traffic subset)
+  stays near the floor when the detector only misses parked objects, while
+  `passes_recall_corrected` (all visible) is an upper-bound-style estimate — small VLMs
+  over-count (measured 1.3-1.8× on a dense daytime scene), so read floor → moving → visible in
+  that order of trust.
 - **The VLM is not deterministic** (12/13/12 on the same frame at temperature 0) — expect a
   range from repeated runs.
 - **Failure looks like**: `ERROR: 0 frames received` with **exit code 3** (typo in the URL,

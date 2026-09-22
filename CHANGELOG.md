@@ -31,8 +31,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
   (`--vlm-model`, `--vlm-base-url` — any OpenAI-compatible provider) and `modelo jev`
   (`--jev-model`), so a run can use whichever model the operator has a key for. Keys stay in the
   environment.
+- **Recall checks ask two questions in one paid call**: each `--vlm-check` answer now carries
+  the total visible count *and* the subset able to generate flow (vehicles on the roadway /
+  people afoot). `summary.json` gains `vlm_checks`, `vlm_moving_mean`,
+  `detector_recall_moving` and `passes_corrected_moving` (traffic-subset estimate, clamped so
+  it never lands below the confirmed floor). The visible ratio keeps its keys and is documented
+  as an upper-bound-style estimate; both ratios now use the check frames' own detector counts
+  (same-frame comparison). The frames CSV keeps its columns — the moving reading rides in
+  `notes` (`vlm moving=N`).
 
 ### Fixed
+- **The recall check silently missed whole periods**: the due test was a modulo window
+  (`t_rel % cadence < interval`) whose width (2 s) is narrower than the real frame cadence
+  (interval + processing + the check itself) — a measured 10 min run at a 30 s cadence fired
+  11 checks instead of ~20. Due-ness is now "cadence seconds since the last check", covered by
+  an offline regression test (`vlm_check_due`).
 - **The dashboard now shows what a run was asked to do**: while a limit is set, the meta line
   carries `limite N min (restam X)` as it counts down, plus `mp4` and `vlm`/`Jev` tags for the
   hybrid legs. Before this the page echoed only interval/tiles/engine/conf/target — a

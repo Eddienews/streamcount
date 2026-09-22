@@ -6,7 +6,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from streamcount.pipeline import _Recorder, frame_index, prune_frames
+from streamcount.pipeline import (
+    _Recorder,
+    frame_index,
+    prune_frames,
+    summarize_recall,
+    vlm_check_due,
+)
 
 
 def _frames(directory: Path, *names: str) -> None:
@@ -56,6 +62,59 @@ def test_prune_prefers_the_numeric_index(tmp_path: Path):
     _frames(tmp_path, "f9999_flow.jpg", "f10000_flow.jpg")
     prune_frames(tmp_path, 1)
     assert [p.name for p in tmp_path.iterdir()] == ["f10000_flow.jpg"]
+
+
+# ------------------------------------------------------- VLM recall scheduling
+def test_vlm_check_due_fires_immediately_then_every_cadence():
+    assert vlm_check_due(0.0, None, 30) is True, "the first frame always checks"
+    assert vlm_check_due(29.9, 0.0, 30) is False
+    assert vlm_check_due(30.0, 0.0, 30) is True
+
+
+def test_vlm_check_due_keeps_cadence_when_frames_are_slower_than_interval():
+    """Regression: live frames arrive every interval + processing (~2.6-4.3 s).
+
+    The old modulo window (t_rel % cadence < interval) skipped whole periods
+    whenever no frame landed inside the narrow 2 s window: 11 checks instead of
+    ~20 went out in a measured 10 min run.
+    """
+    t, last, fires = 0.0, None, 0
+    while t < 600:
+        if vlm_check_due(t, last, 30):
+            last, fires = t, fires + 1
+        t += 2.65
+    assert 18 <= fires <= 20, f"{fires} checks in 10 min at 30 s cadence"
+
+
+# ------------------------------------------------------- recall correction
+def test_summarize_recall_visible_and_moving():
+    checks = [
+        {"det": 30, "vlm": 60, "vlm_moving": 40},
+        {"det": 20, "vlm": 40, "vlm_moving": 20},
+    ]
+    stats = summarize_recall(checks, passes=100)
+    assert stats["vlm_checks"] == 2
+    assert stats["detector_mean_visible"] == 25.0 and stats["vlm_check_mean"] == 50.0
+    assert stats["detector_recall"] == 0.5
+    assert stats["passes_recall_corrected"] == 200
+    assert stats["vlm_moving_mean"] == 30.0
+    assert stats["detector_recall_moving"] == 0.83
+    assert stats["passes_corrected_moving"] == 120
+
+
+def test_summarize_recall_moving_clamps_to_the_floor():
+    """Detector at/above the VLM's traffic count: nothing left to correct."""
+    stats = summarize_recall([{"det": 40, "vlm": 70, "vlm_moving": 35}], passes=90)
+    assert stats["detector_recall_moving"] == 1.0
+    assert stats["passes_corrected_moving"] == 90
+    assert stats["passes_recall_corrected"] == 158, "visible-based stays the upper bound"
+
+
+def test_summarize_recall_without_usable_moving_data_stays_quiet():
+    stats = summarize_recall([{"det": 10, "vlm": 20, "vlm_moving": -1}], passes=50)
+    assert "passes_corrected_moving" not in stats and "vlm_moving_mean" not in stats
+    stats = summarize_recall([{"det": 10, "vlm": 20, "vlm_moving": 0}], passes=50)
+    assert "passes_corrected_moving" not in stats, "all-zero moving readings are unusable"
 
 
 def test_prune_noop_for_keep_zero_or_more_than_present(tmp_path: Path):

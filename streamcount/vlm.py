@@ -1,10 +1,12 @@
 """Vision-LLM counter (bring your own key, OpenAI-compatible endpoints).
 
-The VLM reads a single frame and returns a strict JSON count. It is the most
-accurate engine for sparse scenes (distant/occluded people) but it cannot assign
-stable identities across frames -- so it does not replace the tracker for
-"how many passed"; use it per-frame, or as a periodic recall anchor
-(``--vlm-check``) for the local detector.
+The VLM reads a single frame and returns a strict JSON count: the total
+population and, inside it, the fraction that can actually generate FLOW
+(vehicles in traffic / people afoot). It is the most accurate engine for sparse
+scenes (distant/occluded people) but it cannot assign stable identities across
+frames -- so it does not replace the tracker for "how many passed"; use it
+per-frame, or as a periodic recall anchor (``--vlm-check``) for the local
+detector.
 
 Measured on OpenRouter / google-gemini-2.5-flash-lite (1080p night scene frame,
 1280 px wide): 1.887 input tokens + ~33 output tokens per call, ~1.8-2.4 s/frame.
@@ -29,29 +31,49 @@ TARGET_PROMPTS = {
     "people": (
         "Count every PERSON visible in this image — include people who are small, distant, "
         "seated, partially occluded or cut off at the frame edge. Do not count mannequins, "
-        "statues, posters, reflections or the camera operator."
+        "statues, posters, reflections or the camera operator. Then count how many of those "
+        "people are afoot on the street or sidewalk (walking or standing, i.e. able to move "
+        "through the scene), excluding anyone seated at a table, inside a vehicle or behind "
+        "a window."
     ),
     "cars": (
         "Count every VEHICLE visible in this image — cars, vans, SUVs, trucks, buses and "
-        "motorcycles (moving or parked). Do not count bicycles, reflections or toy vehicles."
+        "motorcycles (moving or parked). Do not count bicycles, reflections or toy vehicles. "
+        "Then count how many of those vehicles are on the roadway in traffic right now "
+        "(driving, stopped at a light or queued in a lane), excluding vehicles parked along "
+        "the kerb or in parking spots."
     ),
 }
 
 
+def _as_int(value) -> int:
+    """Best-effort int for a JSON field that may be missing, null or sloppy."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return -1
+
+
 def parse_count_response(text: str) -> dict:
-    """Extract the strict-JSON counting answer from a model reply (tolerant parsing)."""
+    """Extract the strict-JSON counting answer from a model reply (tolerant parsing).
+
+    Keys: ``count`` (total visible) and ``moving`` (the FLOW-capable subset:
+    in traffic / afoot). Both -1 when the model did not answer numerically.
+    """
     match = re.search(r"\{.*?\}", text or "", re.S)
     if match:
         try:
             data = json.loads(match.group(0))
             return {
-                "count": int(data.get("count", -1)),
+                "count": _as_int(data.get("count", -1)),
+                "moving": _as_int(data.get("moving")),
                 "uncertain": bool(data.get("uncertain", False)),
                 "notes": str(data.get("notes", ""))[:200],
             }
         except (ValueError, TypeError):
             pass
-    return {"count": -1, "uncertain": True, "notes": f"non-JSON reply: {str(text)[:140]}"}
+    return {"count": -1, "moving": -1, "uncertain": True,
+            "notes": f"non-JSON reply: {str(text)[:140]}"}
 
 
 def _read_dotenv(path: Path) -> dict[str, str]:
@@ -112,7 +134,8 @@ class VlmCounter:
         return (
             f"{base}\n"
             "Reply with ONLY a JSON object, no markdown: "
-            '{"count": <int>, "uncertain": <true|false>, "notes": "<one short sentence>"}'
+            '{"count": <int>, "moving": <int>, "uncertain": <true|false>, '
+            '"notes": "<one short sentence>"}'
         )
 
     def _encode(self, image: Image.Image) -> str:

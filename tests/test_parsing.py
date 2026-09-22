@@ -15,8 +15,21 @@ from streamcount.vlm import parse_count_response
 
 # ------------------------------------------------------------------ VLM parsing
 def test_parse_clean_json():
+    result = parse_count_response(
+        '{"count": 12, "moving": 3, "uncertain": false, "notes": "ok"}')
+    assert result == {"count": 12, "moving": 3, "uncertain": False, "notes": "ok"}
+
+
+def test_parse_moving_is_optional():
+    """Replies without the field keep -1 = "no data" (never 0)."""
     result = parse_count_response('{"count": 12, "uncertain": false, "notes": "ok"}')
-    assert result == {"count": 12, "uncertain": False, "notes": "ok"}
+    assert result["count"] == 12 and result["moving"] == -1
+
+
+def test_parse_moving_tolerates_sloppy_values():
+    assert parse_count_response('{"count": 5, "moving": null}')["moving"] == -1
+    assert parse_count_response('{"count": 5, "moving": "about 2"}')["moving"] == -1
+    assert parse_count_response('{"count": 5, "moving": 2.0}')["moving"] == 2
 
 
 def test_parse_json_inside_prose():

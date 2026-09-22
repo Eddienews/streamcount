@@ -72,6 +72,7 @@ streamcount run --youtube "https://www.youtube.com/watch?v=LIVE_ID" \
 streamcount run --video my_recording.mp4 --seek 120 --engine both --frames 60
 
 # Count who PASSES (unique ids) for 1 hour, with a VLM recall check every 60 s
+# (each check asks the VLM for the total visible AND the subset in traffic)
 streamcount run --url "$STREAM" --engine yolo --tiles 2 --interval 2 --frames 1800 \
     --flow --vlm-check 60 --annotate
 
@@ -201,6 +202,14 @@ Measured on a real 1080p night street camera (see [docs/MEASUREMENTS.md](docs/ME
 - In flow mode, the detector's **recall was ~46%** on that night scene (8.0 visible detected
   vs 17.5 seen by the VLM). Raw tracker passes are therefore a **floor**; `--vlm-check`
   measures the recall and reports a corrected estimate (28 → ~61 passes over 80 s of video).
+- **The correction is a range, not one number.** Each check asks the VLM for the total visible
+  *and* the subset in traffic (vehicles on the roadway / people afoot): the traffic-subset
+  estimate (`passes_corrected_moving`) stays near the floor when the detector only misses
+  parked objects, while the all-visible one (`passes_recall_corrected`) reads as a ceiling —
+  with a small VLM the two can differ several-fold. Measured on a dense daytime vehicle scene:
+  110 confirmed passes vs 228 visible-based, while a manual audit of the check frames showed
+  the small VLM over-counting ~1.3-1.8× (68 vs ~36-55) — the truth is far closer to the floor
+  than to the ceiling. Trust the range.
 - **One uninterrupted hour of that camera** (1,800 frames, 1 every 2 s): **1,001 people counted
   passing** (16.7/min, peak 40/min), recall ~70% over the hour → corrected ≈ **1,430/hour**.
   Every minute of that hour had at least one passer-by. Raw run + chart in

@@ -241,6 +241,53 @@ def _default_timeline(source: str) -> str:
     return "video"
 
 
+def vlm_check_due(t_rel: float, last: float | None, cadence: float) -> bool:
+    """True when a periodic recall check is due.
+
+    The window is "cadence seconds since the last check" on purpose: live frames
+    arrive every ``interval + processing`` seconds, which can exceed a modulo
+    window of ``interval`` seconds -- the old ``t_rel % cadence < interval`` form
+    silently skipped whole periods (11 checks instead of ~20 in a 10 min run).
+    """
+    return last is None or (t_rel - last) >= cadence
+
+
+def summarize_recall(checks: list[dict], passes: int) -> dict:
+    """Recall-correction summary from the periodic VLM checks.
+
+    Both ratios compare same-frame counts (no drift bias from averaging the
+    detector over the whole run). ``detector_recall`` divides the detector's
+    per-frame detections by the VLM's TOTAL visible count -- with a small VLM
+    the denominator can be inflated, so the resulting
+    ``passes_recall_corrected`` reads as an upper-bound-style estimate.
+    ``detector_recall_moving`` uses only the vehicles the VLM sees in traffic
+    (or people afoot), the population that can actually become a confirmed
+    pass, so it collapses towards the floor when the detector only loses
+    parked/stationary objects.
+    """
+    n = len(checks)
+    mean_vlm = sum(c["vlm"] for c in checks) / n
+    mean_det = sum(c["det"] for c in checks) / n
+    recall = max(0.05, min(1.0, mean_det / max(mean_vlm, 1e-9)))
+    stats = {
+        "vlm_checks": n,
+        "vlm_check_mean": round(mean_vlm, 1),
+        "detector_mean_visible": round(mean_det, 1),
+        "detector_recall": round(recall, 2),
+        "passes_recall_corrected": round(passes / recall),
+    }
+    moving = [m for m in (c.get("vlm_moving", -1) for c in checks) if m >= 0]
+    if moving and sum(moving) >= len(moving):
+        mean_moving = sum(moving) / len(moving)
+        recall_moving = max(0.05, min(1.0, mean_det / max(mean_moving, 1e-9)))
+        stats.update(
+            vlm_moving_mean=round(mean_moving, 1),
+            detector_recall_moving=round(recall_moving, 2),
+            passes_corrected_moving=round(passes / recall_moving),
+        )
+    return stats
+
+
 def run(config: RunConfig) -> RunResult:
     result = RunResult()
     headers = parse_headers(config.headers)
@@ -352,11 +399,12 @@ def run(config: RunConfig) -> RunResult:
     _log(header + ("  tracks/passes" if tracker else "  notes"))
 
     counts_by_engine: dict[str, list[int]] = {}
-    vlm_check_counts: list[int] = []
+    vlm_checks: list[dict] = []
     router_prev_small = None          # the last decision's frame sample (scene change)
     router_last_check_at: float | None = None
     router_last_vlm: int | None = None
     router_last_local: int | None = None
+    last_vlm_check_at: float | None = None
     t_rel = 0.0
     t0 = time.monotonic()
     frames_done = 0
@@ -420,8 +468,10 @@ def run(config: RunConfig) -> RunResult:
                     counts_by_engine.setdefault("yolo", []).append(len(detections))
 
                     vlm_count: int | str = ""
+                    vlm_moving: int | None = None
                     if vlm is not None and config.vlm_check > 0 and \
-                            (t_rel % config.vlm_check) < config.interval:
+                            vlm_check_due(t_rel, last_vlm_check_at, config.vlm_check):
+                        last_vlm_check_at = t_rel
                         escalate = True
                         if router is not None:
                             now = time.monotonic()
@@ -459,17 +509,27 @@ def run(config: RunConfig) -> RunResult:
                             t_vlm = time.time()
                             answer = vlm.count(image)
                             vlm_count = answer["count"]
-                            vlm_check_counts.append(answer["count"])
+                            vlm_moving = answer.get("moving", -1)
+                            vlm_checks.append({
+                                "det": len(detections),
+                                "vlm": answer["count"],
+                                "vlm_moving": vlm_moving,
+                            })
                             router_last_vlm = answer["count"]
                             router_last_local = len(detections)
+                            move_note = (f", moving={vlm_moving}"
+                                         if vlm_moving is not None and vlm_moving >= 0 else "")
                             _log(f"{index:>5} {'vlm':<5} {answer['count']:>6} "
-                                 f"{int((time.time() - t_vlm) * 1000):>6}  (recall check)")
+                                 f"{int((time.time() - t_vlm) * 1000):>6}  "
+                                 f"(recall check{move_note})")
 
                     _log(f"{index:>5} {'yolo':<5} {len(detections):>6} {ms:>6}  "
                          f"active={len(active)} passes={tracker.total}")
                     writer.writerow(
                         [datetime.now().isoformat(timespec="seconds"), index, "yolo",
-                         len(detections), ms, source, len(active), tracker.total, vlm_count, ""]
+                         len(detections), ms, source, len(active), tracker.total, vlm_count,
+                         f"vlm moving={vlm_moving}"
+                         if vlm_moving is not None and vlm_moving >= 0 else ""]
                     )
                     frames_csv.flush()
                     if annotate_dir or recorder:
@@ -549,19 +609,21 @@ def run(config: RunConfig) -> RunResult:
              f"({tracker.total / max(duration_s / 60, 1e-9):.1f}/min)")
         _log(f"  discarded: {tracker.n_short} short tracks (noise) | "
              f"{tracker.n_static} confirmed but stationary")
-        if vlm_check_counts:
-            mean_vlm = sum(vlm_check_counts) / len(vlm_check_counts)
-            yolo_counts = counts_by_engine.get("yolo", [0])
-            mean_yolo = sum(yolo_counts) / max(len(yolo_counts), 1) or 1
-            recall = max(0.05, min(1.0, mean_yolo / mean_vlm))
-            corrected = round(tracker.total / recall)
-            summary.update(vlm_check_mean=round(mean_vlm, 1),
-                           detector_mean_visible=round(mean_yolo, 1),
-                           detector_recall=round(recall, 2),
-                           passes_recall_corrected=corrected)
-            _log(f"  VLM recall check: yolo visible={mean_yolo:.1f} vs vlm={mean_vlm:.1f} "
-                 f"-> recall~{recall * 100:.0f}%")
-            _log(f"  recall-corrected passes ~ {corrected} (floor: {tracker.total})")
+        if vlm_checks:
+            stats = summarize_recall(vlm_checks, tracker.total)
+            summary.update(stats)
+            _log(f"  VLM recall check ({stats['vlm_checks']} checks): yolo visible="
+                 f"{stats['detector_mean_visible']:.1f} vs vlm={stats['vlm_check_mean']:.1f} "
+                 f"-> recall~{stats['detector_recall'] * 100:.0f}%")
+            _log(f"  recall-corrected passes ~ {stats['passes_recall_corrected']} "
+                 f"(floor: {tracker.total})")
+            if "passes_corrected_moving" in stats:
+                _log(f"  moving-only recall: {stats['detector_mean_visible']:.1f} of "
+                     f"{stats['vlm_moving_mean']:.1f} in traffic -> "
+                     f"recall~{stats['detector_recall_moving'] * 100:.0f}%")
+                _log(f"  passes corrected (moving) ~ {stats['passes_corrected_moving']} "
+                     f"(floor {tracker.total}; the visible-based "
+                     f"{stats['passes_recall_corrected']} is an upper-bound estimate)")
 
         if router is not None:
             stats = router.stats()
