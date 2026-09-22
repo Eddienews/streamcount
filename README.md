@@ -172,7 +172,7 @@ batch endpoints (~50 % cheaper). Full table and provider comparison (qwen, gemma
 | Source | How | Notes |
 |---|---|---|
 | HLS / .m3u8 | `--url` | webcams often need `--headers "Referer=..."`; tokens expire → `find-stream` |
-| RTSP | `--url rtsp://...` | works through the same ffmpeg pipe |
+| RTSP | `--url rtsp://...` | same ffmpeg pipe; TCP transport is added automatically for cameras behind NAT/firewalls |
 | YouTube live | `--youtube URL` | yt-dlp; may need `--yt-js-runtime node:...` |
 | YouTube recording | `--youtube URL` | sample with `--interval`/`--seek` |
 | Local video | `--video file.mp4` | |
@@ -199,7 +199,7 @@ This project publishes both what it does and what it has *not* been tested again
 | area | status |
 |---|---|
 | **Detector recall** | 46–70 % depending on scene density (night street). Counts are a **range** (floor → recall-corrected), never a census. Dense crowds: ±10–20 %. |
-| **RTSP** | same ffmpeg pipe as HLS, but **not exercised on a real RTSP camera yet**. |
+| **RTSP** | ingest validated end-to-end against a local **mediamtx** server (per-frame run + flow run, TCP transport; UDP also decoded). Not yet exercised against a physical camera. |
 | **Vehicle flow** | per-frame vehicle counting is validated (4/4 boxed on a traffic video); *flow counting of vehicles* (ids across time) is validated for people only. |
 | **VLM coverage** | validated with `gemini-2.5-flash-lite` only; `gemma-3-12b` untested; `qwen3.7-flash` failed our strict-JSON reply and needs prompt tuning. |
 | **Run length** | longest validated run: **1 hour** (1,800 frames). Memory/stability beyond that is unverified. |

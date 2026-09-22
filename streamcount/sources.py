@@ -117,6 +117,10 @@ def frames_from_ffmpeg(
         cmd += ["-headers", "".join(f"{k}: {v}\r\n" for k, v in headers.items())]
     if seek_s:
         cmd += ["-ss", f"{seek_s:g}"]
+    if source.lower().startswith("rtsp://"):
+        # TCP for live cameras: portable across NAT/firewalls (UDP/RTP needs open ports on
+        # the camera side). Validated against a local mediamtx server over both transports.
+        cmd += ["-rtsp_transport", "tcp"]
     cmd += [
         "-i", source,
         "-rw_timeout", "15000000",

@@ -109,6 +109,22 @@ along with the boxes, breaking NMS on the first real detection model run). Fixed
 regression tests in `tests/test_detector_decode.py`. It is the reason this repo ships a
 vehicle validation at all — the pose path had never exercised that code.
 
+## RTSP ingest (validated 2026-09-21)
+
+The RTSP path had only ever been reasoned about ("same ffmpeg pipe as HLS"). To close it, a
+local camera server was raised on the dev machine:
+
+| step | evidence |
+|---|---|
+| server | `mediamtx v1.21.1` (Windows amd64), listeners on :8554 (RTSP) |
+| publisher | `ffmpeg -re -stream_loop -1 -i test.mp4 -c copy -f rtsp rtsp://127.0.0.1:8554/live` → mediamtx logged `is publishing to path 'live'` |
+| consumer | `streamcount run --url rtsp://127.0.0.1:8554/live` → 3/3 frames (151–258 ms each), CSV + summary written |
+| flow mode | `--flow` → `events.csv`, `chart.png`, `summary.json` all produced |
+| transports | TCP (the new default for `rtsp://`) decoded cleanly; plain UDP/RTP also decoded here, with h264 "co located POCs unavailable" warnings |
+
+What this does **not** prove: behaviour against a physical camera (ONVIF auth, flaky Wi-Fi,
+hardware encoders) — still on the "not verified" list in the README.
+
 ## Non-camera sources (ingestion checks)
 
 | source | method | result |

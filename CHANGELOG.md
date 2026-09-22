@@ -9,7 +9,8 @@ First public version.
 
 ### Added
 - `streamcount run`: per-frame counting from HLS/RTSP/direct URLs, YouTube links (live and
-  recordings, via yt-dlp), local videos and image folders.
+  recordings, via yt-dlp), local videos and image folders. `rtsp://` sources get
+  `-rtsp_transport tcp` automatically (validated against a local mediamtx server).
 - Two interchangeable engines: local ONNX detector (`yolo`) and vision-LLM API (`vlm`),
   plus `both` for side-by-side calibration on the same frame.
 - Tiled inference (`--tiles N`) with stacked-box merging (torso+legs) to recover small and
