@@ -136,7 +136,7 @@ and the running log):
 streamcount serve --port 8766 --open      # opens http://127.0.0.1:8766 in your browser
 ```
 
-<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard: 28 passers-by, the target picker and record-mp4 right under the link field, per-minute bars, latest passes with track ids and the timelapse.mp4 link">
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard from a real 3-minute run: 16 passers-by with the moving counter, the target picker and record-mp4 under the link field, a meta line with the run limit and mp4 tags, per-minute bars, latest passes with track ids and the timelapse.mp4 link">
 
 It is a thin supervisor over `streamcount run` — same engines, same options, one page. The
 target picker (people/cars) and the *record mp4* toggle sit right under the link field — no need
