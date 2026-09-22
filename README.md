@@ -12,7 +12,7 @@ and unique passers-by, with a local ONNX detector (free, offline) or a vision LL
 
 <img src="https://github.com/Eddienews/streamcount/raw/main/assets/screenshot-flow-live.jpg" width="640" alt="Live flow counting on a night street camera — each tracked person gets an id and the running total of passers-by is shown">
 
-<img src="https://github.com/Eddienews/streamcount/raw/main/assets/demo.gif" width="640" alt="Animated demo: tracked ids on a live night street, running pass total in the corner">
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/demo.gif" width="640" alt="Animated demo from a real live run: tracked ids on a night street camera, running pass total in the corner (28 frames sampled from a 3-minute run)">
 
 <img src="https://github.com/Eddienews/streamcount/raw/main/assets/hour-live-run.gif" width="640" alt="One-hour live run replayed minute by minute: passers-by per minute (bars) and cumulative total (line)">
 
@@ -105,7 +105,7 @@ and the running log):
 streamcount serve --port 8766 --open      # opens http://127.0.0.1:8766 in your browser
 ```
 
-<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard: passers-by 81, per-minute bars, latest passes with track ids">
+<img src="https://github.com/Eddienews/streamcount/raw/main/assets/dashboard.png" width="720" alt="streamcount live dashboard: 55 passers-by, per-minute bars, latest passes with track ids, the options panel (keep-frames, record mp4) and the timelapse.mp4 link">
 
 It is a thin supervisor over `streamcount run` — same engines, same options, one page. The run
 is a **live session**: it stops when you press *stop*, not after the CLI default of 10 frames.

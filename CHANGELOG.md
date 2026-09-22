@@ -23,6 +23,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](htt
   `f10000` *before* `f9999` — past 9,999 frames (~5.5 h at 2 s) the page could serve a stale
   frame. The numeric frame index now decides.
 
+### Changed
+- README assets refreshed from a fresh 3-minute live run (Bourbon Street, 90 frames, 55
+  passers-by): `assets/dashboard.png` now shows the *record mp4* option and the
+  `▶ timelapse.mp4` link; `assets/demo.gif` was rebuilt from the same run's frames with the new
+  `scripts/render_demo_gif.py` (also uses the new `--keep-frames 0`/`--timelapse` flags only as
+  data sources). Three unreferenced screenshots dropped from `assets/`.
+
 ## [0.1.0] - 2026-09-21
 
 First public version.
